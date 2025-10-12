@@ -1,0 +1,4 @@
+[core]
+    remote = s3repo
+['remote "s3repo"']
+    url = s3://mlops-dvc-storage-ivan/data
