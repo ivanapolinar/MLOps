@@ -13,7 +13,6 @@ jobs:
           types: |
             feat
             fix
-          headerPattern: '^(\w+)\(fase\d+\): .+$'
-          subjectPattern: '^\(fase\d+\): .+'
+          headerPattern: '^(\w+)\(fase\d+\): (.+)$'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
