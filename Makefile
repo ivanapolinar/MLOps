@@ -29,10 +29,10 @@ requirements: test_environment
 data: requirements
 	$(PYTHON_INTERPRETER) src/data/make_dataset.py data/raw/steel_energy_modified.csv data/clean/steel_energy_clean.csv
 
-train:
+train: requirements
 	$(PYTHON_INTERPRETER) src/models/train_model.py
 
-visualization:
+visualization: requirements
 	$(PYTHON_INTERPRETER) src/visualization/visualize.py
 
 ## Delete all compiled Python files
