@@ -5,7 +5,7 @@
 #################################################################################
 
 PROJECT_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
-BUCKET = mlops-steel-energy-dvc-storage/data
+BUCKET = mlops-dvc-storage-ivan/data
 PROFILE = default
 PROJECT_NAME = steel_energy
 PYTHON_INTERPRETER = python3
@@ -30,7 +30,7 @@ data: requirements
 	$(PYTHON_INTERPRETER) src/data/make_dataset.py data/raw/steel_energy_modified.csv data/clean/steel_energy_clean.csv
 
 train: requirements
-	$(PYTHON_INTERPRETER) src/models/train_model.py
+	$(PYTHON_INTERPRETER) src/models/train_model.py data/clean/steel_energy_clean.csv models/best_rf_model.joblib reports/figures
 
 visualization: requirements
 	$(PYTHON_INTERPRETER) src/visualization/visualize.py
@@ -61,7 +61,7 @@ else
 endif
 
 ## Versionar archivo con DVC
-dvc:
+dvc_commit:
 	@if [ -f data/clean/steel_energy_clean.csv ]; then \
 		dvc add data/clean/steel_energy_clean.csv; \
 	else \
@@ -77,6 +77,17 @@ dvc:
 	dvc push
 	git push
 
+dvc:
+	@if [ -f data/clean/steel_energy_clean.csv ]; then \
+		dvc add data/clean/steel_energy_clean.csv; \
+	else \
+		echo "Archivo data/clean/steel_energy_clean.csv NO existe"; \
+	fi
+	@if [ -f models/best_rf_model.joblib ]; then \
+		dvc add models/best_rf_model.joblib; \
+	else \
+		echo "Archivo models/best_rf_model.joblib NO existe"; \
+	fi
 
 ## Set up python interpreter environment
 create_environment:
