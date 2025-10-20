@@ -1,0 +1,17 @@
+stages:
+  preprocess:
+    cmd: python src/data/make_dataset.py data/raw/steel_energy_modified.csv data/clean/steel_energy_clean.csv
+    deps:
+      - src/data/make_dataset.py
+      - data/raw/steel_energy_modified.csv
+    outs:
+      - data/clean/steel_energy_clean.csv
+
+  train:
+    cmd: python src/models/train_model.py data/clean/steel_energy_clean.csv models/best_rf_model.joblib reports/figures
+    deps:
+      - src/models/train_model.py
+      - data/clean/steel_energy_clean.csv
+    outs:
+      - models/best_rf_model.joblib
+      - reports/figures
