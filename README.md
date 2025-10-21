@@ -45,8 +45,8 @@ Project Organization
     │   │
     │   └── visualization  <- Scripts to create exploratory and results oriented visualizations
     │       └── visualize.py
-    ├── setup_dvc_s3.sh      # Script automático para Mac/Linux
-    ├── setup_dvc_s3.bat     # Script automático para Windows
+    ├── dvc.yaml      # yaml file to run make_dataset and training
+    ├── params.yaml     # yaml file for trainign params
     └── tox.ini            <- tox file with settings for running tox; see tox.readthedocs.io
 
 
@@ -80,25 +80,7 @@ Ingresa:
 
 O bien, puedes exportar las variables en tu `~/.zshrc` (Mac/Linux) o configurarlas en el entorno de Windows.
 
-### 2. Configura el remote de DVC
-
-#### **En MacOS/Linux:**
-Ejecuta el script de setup:
-
-```bash
-./setup_dvc_s3.sh
-```
-
-#### **En Windows:**
-Ejecuta el script de setup (doble clic o desde CMD):
-
-```bat
-setup_dvc_s3.bat
-```
-
-Esto configurará automáticamente el remote de DVC para el bucket S3.
-
-### 3. Sincroniza tu repo y datos
+### 2. Sincroniza tu repo y datos
 
 Después de configurar, ejecuta:
 
@@ -109,12 +91,11 @@ dvc pull
 
 Esto traerá la configuración y descargará los datos desde S3.
 
-### 4. Uso normal de DVC
+### 3. Uso normal de DVC
 
 - Para subir datos:
   ```bash
-  dvc add data/tu_archivo.csv
-  git add data/tu_archivo.csv.dvc .gitignore
+  dvc repro
   git commit -m "TuNombre: Descripción del cambio"
   dvc push
   git push
@@ -131,7 +112,7 @@ Esto traerá la configuración y descargará los datos desde S3.
 - **¿Cómo sé si tengo acceso al S3?**  
   Prueba:
   ```bash
-  aws s3 ls s3://mlops-steel-energy-dvc-storage/data   
+  aws s3 ls s3://mlops-dvc-storage-ivan/data   
   ```
   Si ves archivos/carpetas, tienes acceso.
 
