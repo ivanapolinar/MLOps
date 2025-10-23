@@ -1,0 +1,20 @@
+name: 🚀 Pull Request Title Validation ✅
+
+on:
+  pull_request:
+    types:
+      - opened
+      - edited
+      - synchronize
+
+permissions:
+  pull-requests: read
+
+jobs:
+  validate_pull_request_title:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🔍 Validate PR Title Format
+        uses: amannn/action-semantic-pull-request@v5.3.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
