@@ -20,23 +20,68 @@ import mlflow.sklearn
 
 
 def load_data(input_path):
+    """
+    Load a dataset from a CSV file.
+
+    Parameters
+    ----------
+    input_path : str
+        Path to the CSV file.
+
+    Returns
+    -------
+    df : pandas.DataFrame
+        Loaded dataframe.
+    """
     df = pd.read_csv(input_path)
     return df
 
 
 def split_data(df, target="Load_Type", test_size=0.2, random_state=42):
+    """
+    Split a dataframe into train and test sets.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Input dataframe.
+    target : str, default="Load_Type"
+        Name of the target column.
+    test_size : float, default=0.2
+        Proportion of the dataset to include in the test split.
+    random_state : int, default=42
+        Random seed.
+
+    Returns
+    -------
+    X_train, X_test, y_train, y_test : tuple
+        Split features and target arrays for training and testing.
+    """
     y = df[target]
     X = df.drop(columns=[target, 'date'], errors="ignore")
     return train_test_split(
-        X,
-        y,
-        test_size=test_size,
-        random_state=random_state,
-        stratify=y
+        X, y, test_size=test_size, random_state=random_state, stratify=y
     )
 
 
 def build_preprocessing(X):
+    """
+    Create a preprocessing pipeline for numeric and categorical features.
+
+    Parameters
+    ----------
+    X : pandas.DataFrame
+        Feature matrix.
+
+    Returns
+    -------
+    preprocessing : sklearn.compose.ColumnTransformer
+        Preprocessing pipeline.
+    num_cols : list
+        List of numeric columns.
+    cat_cols : list
+        List of categorical columns.
+    """
     cat_cols = list(X.select_dtypes('object').columns)
     num_cols = list(X.select_dtypes('number').columns)
     preprocessing = ColumnTransformer(
@@ -49,6 +94,25 @@ def build_preprocessing(X):
 
 
 def train_base_model(X_train, y_train, preprocessing, params=None):
+    """
+    Train a Random Forest model with preprocessing.
+
+    Parameters
+    ----------
+    X_train : pandas.DataFrame
+        Training features.
+    y_train : pandas.Series
+        Training target.
+    preprocessing : sklearn.compose.ColumnTransformer
+        Preprocessing pipeline.
+    params : dict, optional
+        Parameters for RandomForestClassifier.
+
+    Returns
+    -------
+    rf_model : sklearn.pipeline.Pipeline
+        Trained pipeline.
+    """
     rf = RandomForestClassifier(random_state=42, **(params or {}))
     rf_model = make_pipeline(preprocessing, rf)
     rf_model.fit(X_train, y_train)
@@ -56,6 +120,31 @@ def train_base_model(X_train, y_train, preprocessing, params=None):
 
 
 def evaluate_model(model, X_test, y_test, figures_dir, name="base"):
+    """
+    Evaluate a trained model and save the confusion matrix plot.
+
+    Parameters
+    ----------
+    model : sklearn.pipeline.Pipeline
+        Trained model.
+    X_test : pandas.DataFrame
+        Test features.
+    y_test : pandas.Series
+        Test target.
+    figures_dir : str
+        Directory to save figures.
+    name : str, default="base"
+        Name for the evaluation run.
+
+    Returns
+    -------
+    acc : float
+        Accuracy score.
+    fig_path : str
+        Path to the saved confusion matrix plot.
+    report : dict
+        Classification report as a dict.
+    """
     y_pred = model.predict(X_test)
     report = classification_report(y_test, y_pred, output_dict=True)
     acc = accuracy_score(y_test, y_pred)
@@ -80,6 +169,25 @@ def evaluate_model(model, X_test, y_test, figures_dir, name="base"):
 
 
 def hyperparameter_tuning(model, X_train, y_train):
+    """
+    Perform hyperparameter tuning for a Random Forest pipeline.
+
+    Parameters
+    ----------
+    model : sklearn.pipeline.Pipeline
+        Model pipeline.
+    X_train : pandas.DataFrame
+        Training features.
+    y_train : pandas.Series
+        Training target.
+
+    Returns
+    -------
+    best_estimator_ : sklearn.pipeline.Pipeline
+        Model pipeline with best parameters.
+    best_params_ : dict
+        Best hyperparameters found.
+    """
     param_dist = {
         "randomforestclassifier__n_estimators": [100, 200, 400],
         "randomforestclassifier__max_depth": [10, 20, None],
@@ -104,6 +212,27 @@ def hyperparameter_tuning(model, X_train, y_train):
 
 
 def save_feature_importance(model, num_cols, cat_cols, figures_dir):
+    """
+    Save feature importances and plot for a trained Random Forest pipeline.
+
+    Parameters
+    ----------
+    model : sklearn.pipeline.Pipeline
+        Trained pipeline.
+    num_cols : list
+        List of numeric columns.
+    cat_cols : list
+        List of categorical columns.
+    figures_dir : str
+        Directory for saving figures.
+
+    Returns
+    -------
+    fi_path : str
+        Path to saved feature importances CSV.
+    top_feat_path : str
+        Path to top features plot.
+    """
     rf_final = model.named_steps["randomforestclassifier"]
     ohe = model.named_steps["columntransformer"].named_transformers_["cat"]
     encoded_cat_cols = ohe.get_feature_names_out(cat_cols)
@@ -128,6 +257,16 @@ def save_feature_importance(model, num_cols, cat_cols, figures_dir):
 
 
 def save_model(model, model_path):
+    """
+    Save a trained model to disk using joblib.
+
+    Parameters
+    ----------
+    model : sklearn.pipeline.Pipeline
+        Trained model pipeline.
+    model_path : str
+        Path to save the model.
+    """
     joblib.dump(model, model_path)
     print(f"Modelo guardado en {model_path}")
 
@@ -137,8 +276,24 @@ def save_model(model, model_path):
 @click.argument('model_path', type=click.Path())
 @click.argument('figures_dir', type=click.Path())
 def main(input_path, model_path, figures_dir):
-    """Entrena y guarda el modelo Random Forest,
-    y exporta resultados gráficos."""
+    """
+    Main training routine:
+    - Loads data
+    - Splits into train/test
+    - Builds preprocessing pipeline
+    - Trains and evaluates base and tuned models
+    - Saves results and logs with MLflow
+    - Exports feature importances and model
+
+    Parameters
+    ----------
+    input_path : str
+        Path to the dataset (CSV).
+    model_path : str
+        Path to save the trained model.
+    figures_dir : str
+        Directory to save figures.
+    """
     os.makedirs(os.path.dirname(model_path), exist_ok=True)
     os.makedirs(figures_dir, exist_ok=True)
     df = load_data(input_path)
