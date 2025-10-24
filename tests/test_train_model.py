@@ -44,7 +44,7 @@ def test_split_data(dummy_df):
         test_size=0.33,
         random_state=0
     )
-    # Check if summe corresponds
+    # Check if sum corresponds
     assert len(X_train) + len(X_test) == len(dummy_df)
     # Check if target was correctly split
     assert all(~X_train.columns.isin(['Load_Type', 'date']))
@@ -59,7 +59,7 @@ def test_build_preprocessing(dummy_df):
     preprocessing, num_cols, cat_cols = train_model.build_preprocessing(X)
     assert 'f1' in num_cols and 'f2' in num_cols
     assert 'cat' in cat_cols
-    # Checa que sea un ColumnTransformer
+    # Check that it is a ColumnTransformer
     from sklearn.compose import ColumnTransformer
     assert isinstance(preprocessing, ColumnTransformer)
 
@@ -138,7 +138,7 @@ def test_hyperparameter_tuning(dummy_df):
         X_train,
         y_train
     )
-    # Checa que el modelo esté ajustado y que retorne parámetros
+    # Check that the model is fitted and returns parameters
     check_is_fitted(best_model.named_steps['randomforestclassifier'])
     assert isinstance(best_params, dict)
     assert "randomforestclassifier__n_estimators" in best_params
