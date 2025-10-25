@@ -56,8 +56,8 @@ class DataSplitter:
         """
         Inputs:
             - target: Variable to predict, default Load_Type
-            - cols_to_drop: Columns to drop from the dataframe, default column date
-            - test_size: Percentage representing the size for test data, default 0.2
+            - cols_to_drop: Columns to drop from the dataframe
+            - test_size: Percentage representing the size for test data
             - random_state: Random seed for train test splitting, default 42
         Purpose:
             - Store data splitting attributes
@@ -74,12 +74,13 @@ class DataSplitter:
         Outputs:
             - List representing train test split
         Purpose:
-            - Performing train test split with the corresponding data splitting attributes
+            - Performing train test split
         """
         y = df[self.target]
         X = df.drop(columns=[self.target] + self.cols_to_drop)
         return train_test_split(
-            X, y, test_size=self.test_size, random_state=self.random_state, stratify=y
+            X, y, test_size=self.test_size,
+            random_state=self.random_state, stratify=y
         )
 
 
@@ -95,7 +96,7 @@ class PreprocessingBuilder:
         Inputs:
             - X: Features dataframe
         Outputs:
-            - preprocessing: Column transformer with standard scaler for numerical columns and one hot encoder for categorical columns
+            - preprocessing: Column transformer
             - cat_cols: List of categorical columns
             - num_cols: List of numerical columns
         Purpose:
@@ -123,7 +124,7 @@ class ModelTrainer:
         """
         Inputs:
             - random_state: Random seed for model training, default 42
-            - params: Dictionary containing hyperparameter for model training, focus on Random forest classifier
+            - params: Dictionary containing hyperparameter for model training
         Purpose:
             - Store modeling attributes
         """
@@ -135,11 +136,14 @@ class ModelTrainer:
         Inputs:
             - preprocessing: Column transformer with features transformation
         Outputs:
-            - Pipeline with two steps, one with features preprocessing and other with model training
+            - Pipeline with two steps, preprocessing and model
         Purpose:
             - Build training pipeline
         """
-        rf = RandomForestClassifier(random_state=self.random_state, **self.params)
+        rf = RandomForestClassifier(
+                random_state=self.random_state,
+                **self.params
+            )
         return make_pipeline(preprocessing, rf)
 
     def fit(
@@ -201,7 +205,10 @@ class ModelEvaluator:
         print("Accuracy:", acc)
 
         plt.figure(figsize=(6, 4))
-        sns.heatmap(confusion_matrix(y_test, y_pred), annot=True, fmt="d", cmap="Blues")
+        sns.heatmap(
+            confusion_matrix(y_test, y_pred),
+            annot=True, fmt="d", cmap="Blues"
+        )
         plt.title(f"Confusion Matrix - RandomForest ({name})")
         plt.xlabel("Predictions")
         plt.ylabel("Real")
@@ -223,7 +230,7 @@ class HyperparameterTuner:
     def __init__(self, param_dist: dict | None = None):
         """
         Inputs:
-            - param_dist: Dictionary with hyperparameters distributions, default None
+            - param_dist: Dictionary with hyperparameters distributions
         Purpose:
             - Store hyperparameters attributes
         """
@@ -256,7 +263,7 @@ class HyperparameterTuner:
             - rf_rscv.best_estimator_: Best model
             - rf_rscv.best_params_: Best model hyperparameters
         Purpose:
-            - Perform random search hyperparameter tunning and return best available model with its hyperparameters
+            - Perform random search hyperparameter tunning
         """
         rf_rscv = RandomizedSearchCV(
             estimator=model,
@@ -293,8 +300,8 @@ class FeatureImportanceExporter:
         Purpose:
             - Visualize the most important features
         """
-        rf_final: RandomForestClassifier = model.named_steps["randomforestclassifier"]
-        ct: ColumnTransformer = model.named_steps["columntransformer"]
+        rf_final = model.named_steps["randomforestclassifier"]
+        ct = model.named_steps["columntransformer"]
         feature_names = ct.get_feature_names_out()
 
         importances = rf_final.feature_importances_
@@ -306,7 +313,11 @@ class FeatureImportanceExporter:
         feature_importances.head(15).to_csv(fi_path, index=False)
 
         plt.figure(figsize=(10, 6))
-        sns.barplot(data=feature_importances.head(15), x="Importance", y="Feature")
+        sns.barplot(
+            data=feature_importances.head(15),
+            x="Importance",
+            y="Feature"
+        )
         plt.title("Top 15 Most Important Variables - RandomForest")
         plt.xlabel("Importance")
         plt.ylabel("Variable")
@@ -339,11 +350,11 @@ class ModelPersister:
 # ==================== Orchestrator Class ==================== #
 
 
-# Orchestrates all preprocessing, training, evaluation, and logging for model processing
+# Orchestrates all experiment run
 class ExperimentRunner:
     """
     Purpose:
-        - Handle a complete experiment run with base and optimized hyperparameters
+        - Handle a complete experiment run
     """
 
     def __init__(self):
@@ -399,7 +410,11 @@ class ExperimentRunner:
             mlflow.log_artifact(fig_base)
 
             # Hyperparameter tunning
-            best_model, best_params = self.tuner.tune(rf_model, X_train, y_train)
+            best_model, best_params = self.tuner.tune(
+                rf_model,
+                X_train,
+                y_train
+            )
             mlflow.log_params(best_params)
 
             # Best Metric Logging
@@ -410,7 +425,10 @@ class ExperimentRunner:
             mlflow.log_artifact(fig_opt)
 
             # Calculate feature importances
-            fi_path, top_feat_path = self.fi_exporter.export(best_model, figures_dir)
+            fi_path, top_feat_path = self.fi_exporter.export(
+                best_model,
+                figures_dir
+            )
             mlflow.log_artifact(fi_path)
             mlflow.log_artifact(top_feat_path)
 
@@ -432,7 +450,7 @@ class ExperimentRunner:
 # ==================== CLI ==================== #
 
 
-# Orchestrates all preprocessing, training, evaluation, and logging for model processing
+# Orchestrates all model and experiment run
 @click.command()
 @click.argument("input_path", type=click.Path(exists=True))
 @click.argument("model_path", type=click.Path())
