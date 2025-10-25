@@ -4,7 +4,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import os
-from typing import Type, Dict, Any, Optional, Union
 
 from sklearn.base import BaseEstimator, ClassifierMixin, RegressorMixin
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
@@ -29,18 +28,51 @@ import mlflow.sklearn
 
 # Class representing the data repository, in this case, the data file
 class DataRepository:
+    """
+    Purpose:
+        - Read csv files in a local or remote repository
+    """
     def load(self, input_path: str) -> pd.DataFrame:
+        """
+        Inputs:
+            - input_path: File path for csv file
+        Outputs:
+            - DataFrame: Pandas dataframe with csv data
+        Purpose:
+            - Load data
+        """
         return pd.read_csv(input_path)
 
 # Class helping the data splitting based on a target variable, default values represent our current experiment
 class DataSplitter:
+    """
+    Purpose:
+        - Split data in train and test.
+    """
     def __init__(self, target: str = 'Load_Type', cols_to_drop: list[str] = ['date'], test_size: float = 0.2, random_state: int = 42):
+        """
+        Inputs:
+            - target: Variable to predict, default Load_Type
+            - cols_to_drop: Columns to drop from the dataframe, default column date
+            - test_size: Percentage representing the size for test data, default 0.2
+            - random_state: Random seed for train test splitting, default 42
+        Purpose:
+            - Store data splitting attributes
+        """
         self.target = target
         self.test_size = test_size
         self.random_state = random_state
         self.cols_to_drop = cols_to_drop
 
     def split(self, df: pd.DataFrame) -> list:
+        """
+        Inputs:
+            - df: Pandas dataframe with the data to split
+        Outputs:
+            - List representing train test split
+        Purpose:
+            - Performing train test split with the corresponding data splitting attributes
+        """
         y = df[self.target]
         X = df.drop(columns=[self.target] + self.cols_to_drop)
         return train_test_split(
@@ -52,7 +84,21 @@ class DataSplitter:
 
 # Class that helps making the preprocessing pipeline
 class PreprocessingBuilder:
+    """
+    Purpose:
+        - Handle the creation of preprocessing pipeline
+    """
     def build(self, X: pd.DataFrame):
+        """
+        Inputs:
+            - X: Features dataframe
+        Outputs:
+            - preprocessing: Column transformer with standard scaler for numerical columns and one hot encoder for categorical columns
+            - cat_cols: List of categorical columns
+            - num_cols: List of numerical columns
+        Purpose:
+            - Build preprocessing pipeline
+        """
         cat_cols = list(X.select_dtypes('object').columns)
         num_cols = list(X.select_dtypes('number').columns)
         preprocessing = ColumnTransformer(
@@ -65,22 +111,69 @@ class PreprocessingBuilder:
 
 # Class that handles model training
 class ModelTrainer:
+    """
+    Purpose:
+        - Handle model training
+    """
     def __init__(self, random_state: int = 42, params: dict | None = None):
+        """
+        Inputs:
+            - random_state: Random seed for model training, default 42
+            - params: Dictionary containing hyperparameter for model training, focus on Random forest classifier
+        Purpose:
+            - Store modeling attributes
+        """
         self.random_state = random_state
         self.params = params
 
     def build_pipeline(self, preprocessing: ColumnTransformer) -> Pipeline:
+        """
+        Inputs:
+            - preprocessing: Column transformer with features transformation
+        Outputs:
+            - Pipeline with two steps, one with features preprocessing and other with model training
+        Purpose:
+            - Build training pipeline
+        """
         rf = RandomForestClassifier(random_state=self.random_state, **self.params)
         return make_pipeline(preprocessing, rf)
 
     def fit(self, X_train: pd.DataFrame, y_train: pd.Series, preprocessing: ColumnTransformer) -> Pipeline:
+        """
+        Inputs:
+            - X_train: Pandas dataframe with features
+            - y_train: Pandas series with target
+            - preprocessing: Column transformer with features transformation
+        Outputs:
+            - model: Trained modeling pipeline
+        Purpose:
+            - Build and train modeling pipeline
+        """
         model = self.build_pipeline(preprocessing)
         model.fit(X_train, y_train)
         return model
 
 # Class that handles evaluation and image generation
 class ModelEvaluator:
-    def evaluate(self, model: BaseEstimator, X_test: pd.DataFrame, y_test: pd.Series, figures_dir: str, name: str = 'base') -> dict:
+    """
+    Purpose:
+        - Model evaluation and image generation
+    """
+    def evaluate(self, model: BaseEstimator, X_test: pd.DataFrame, y_test: pd.Series, figures_dir: str, name: str = 'base'):
+        """
+        Inputs:
+            - model: Model that will be use for evaluation
+            - X_test: Pandas dataframe with test features
+            - y_test: Pandas series with test target
+            - figures_dir: Directory to store evaluation images
+            - name: Descriptive name of the evalution run, default base
+        Outputs:
+            - acc: Accuracy of the evaluation
+            - fig_path: Path of the confusion matrix image
+            - report: Classification report
+        Purpose:
+            - Evaluate the model performance
+        """
         y_pred = model.predict(X_test)
         report = classification_report(y_test, y_pred)
         acc = accuracy_score(y_test, y_pred)
@@ -108,7 +201,17 @@ class ModelEvaluator:
 
 # Class that handles hyperparameter tunning
 class HyperparameterTuner:
+    """
+        Purpose:
+            - Handle hyperparameter tuning
+    """
     def __init__(self, param_dist: dict | None = None):
+        """
+        Inputs:
+            - param_dist: Dictionary with hyperparameters distributions, default None
+        Purpose:
+            - Store hyperparameters attributes
+        """
         self.param_dist = param_dist if param_dist is not None else {
             "randomforestclassifier__n_estimators": [100, 200, 400],
             "randomforestclassifier__max_depth": [10, 20, None],
@@ -118,6 +221,18 @@ class HyperparameterTuner:
         }
 
     def tune(self, model: Pipeline, X_train: pd.DataFrame, y_train: pd.Series, random_state: int = 42):
+        """
+        Inputs:
+            - model: Pipeline with modeling steps
+            - X_train: Pandas dataframe with train features
+            - y_train: Pandas series with train target
+            - random_state: Random seed for hyperparameter tunning, default 42
+        Outputs:
+            - rf_rscv.best_estimator_: Best model
+            - rf_rscv.best_params_: Best model hyperparameters
+        Purpose:
+            - Perform random search hyperparameter tunning and return best available model with its hyperparameters
+        """
         rf_rscv = RandomizedSearchCV(
             estimator=model,
             param_distributions=self.param_dist,
@@ -136,7 +251,21 @@ class HyperparameterTuner:
 
 # Class that exports feature importances and graphs them
 class FeatureImportanceExporter:
-    def export(self, model: Pipeline, num_cols: list, cat_cols: list, figures_dir: str):
+    """
+        Purpose:
+            - Obtain most important features and store graphical representations
+    """
+    def export(self, model: Pipeline, figures_dir: str):
+        """
+        Inputs:
+            - model: Trained pipeline with modeling steps
+            - figures_dir: Directory to store the generated image
+        Outputs:
+            - fi_path: Feature importance data path
+            - top_feat_path: Top 15 most important features image path
+        Purpose:
+            - Visualize the most important features
+        """
         rf_final: RandomForestClassifier = model.named_steps["randomforestclassifier"]
         ct: ColumnTransformer = model.named_steps["columntransformer"]
         feature_names = ct.get_feature_names_out()
@@ -163,7 +292,18 @@ class FeatureImportanceExporter:
         return fi_path, top_feat_path
 
 class ModelPersister():
+    """
+        Purpose:
+            - Save the trained model
+    """
     def save(self, model: Pipeline, model_path: str):
+        """
+        Inputs:
+            - model: Trained pipeline with modeling steps
+            - model_path: Path to store the model
+        Purpose:
+            - Save the trained model
+        """
         joblib.dump(model, model_path)
         print(f"Model saved in {model_path}")
 
@@ -174,7 +314,15 @@ class ModelPersister():
 
 # Orchestrates all preprocessing, training, evaluation, and logging for model processing
 class ExperimentRunner():
+    """
+        Purpose:
+            - Handle a complete experiment run with base and optimized hyperparameters
+    """
     def __init__(self):
+        """
+        Purpose:
+            - Use classes as attributes for easy accessing
+        """
         self.data_repo = DataRepository()
         self.splitter = DataSplitter()
         self.pre_builder = PreprocessingBuilder()
@@ -185,6 +333,14 @@ class ExperimentRunner():
         self.persister = ModelPersister()
 
     def run(self, input_path: str, model_path: str, figures_dir: str):
+        """
+        Inputs:
+            - input_path: Data file path
+            - model_path: Path to store the model
+            - figures_dir: Directory to store generated images
+        Purpose:
+            - Handle a complete mlflow experiment run
+        """
         # Make dirs for outputs
         os.makedirs(os.path.dirname(model_path), exist_ok=True)
         os.makedirs(figures_dir, exist_ok=True)
@@ -251,7 +407,14 @@ class ExperimentRunner():
 @click.argument('model_path', type=click.Path())
 @click.argument('figures_dir', type=click.Path())
 def main(input_path, model_path, figures_dir):
-    """Entrena y guarda el modelo Random Forest, y exporta resultados gráficos."""
+    """
+        Inputs:
+            - input_path: Data file path
+            - model_path: Path to store the model
+            - figures_dir: Directory to store generated images
+        Purpose:
+            - Call a experiment run
+    """
     runner = ExperimentRunner()
     runner.run(input_path, model_path, figures_dir)
 
