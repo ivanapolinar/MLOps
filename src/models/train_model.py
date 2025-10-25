@@ -1,30 +1,24 @@
-import click
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
 import os
 
-from sklearn.base import BaseEstimator, ClassifierMixin, RegressorMixin
-from sklearn.preprocessing import StandardScaler, OneHotEncoder
-from sklearn.pipeline import make_pipeline, Pipeline
-from sklearn.model_selection import (
-    train_test_split, RandomizedSearchCV
-)
-from sklearn.compose import ColumnTransformer
-from sklearn.metrics import (
-    confusion_matrix, accuracy_score, classification_report
-)
-from sklearn.ensemble import RandomForestClassifier
-
+import click
 import joblib
+import matplotlib.pyplot as plt
 import mlflow
 import mlflow.sklearn
-
-
-
+import pandas as pd
+import seaborn as sns
+from sklearn.base import BaseEstimator
+from sklearn.compose import ColumnTransformer
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import (
+    accuracy_score, classification_report, confusion_matrix
+)
+from sklearn.model_selection import RandomizedSearchCV, train_test_split
+from sklearn.pipeline import Pipeline, make_pipeline
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 # ==================== Helper Classes ==================== #
+
 
 # Class representing the data repository, in this case, the data file
 class DataRepository:
@@ -32,6 +26,7 @@ class DataRepository:
     Purpose:
         - Read csv files in a local or remote repository
     """
+
     def load(self, input_path: str) -> pd.DataFrame:
         """
         Inputs:
@@ -43,13 +38,21 @@ class DataRepository:
         """
         return pd.read_csv(input_path)
 
-# Class helping the data splitting based on a target variable, default values represent our current experiment
+
+# Class helping the data splitting based on a target variable
 class DataSplitter:
     """
     Purpose:
         - Split data in train and test.
     """
-    def __init__(self, target: str = 'Load_Type', cols_to_drop: list[str] = ['date'], test_size: float = 0.2, random_state: int = 42):
+
+    def __init__(
+        self,
+        target: str = "Load_Type",
+        cols_to_drop: list[str] = ["date"],
+        test_size: float = 0.2,
+        random_state: int = 42,
+    ):
         """
         Inputs:
             - target: Variable to predict, default Load_Type
@@ -76,11 +79,9 @@ class DataSplitter:
         y = df[self.target]
         X = df.drop(columns=[self.target] + self.cols_to_drop)
         return train_test_split(
-            X, y,
-            test_size=self.test_size,
-            random_state=self.random_state,
-            stratify=y
+            X, y, test_size=self.test_size, random_state=self.random_state, stratify=y
         )
+
 
 # Class that helps making the preprocessing pipeline
 class PreprocessingBuilder:
@@ -88,6 +89,7 @@ class PreprocessingBuilder:
     Purpose:
         - Handle the creation of preprocessing pipeline
     """
+
     def build(self, X: pd.DataFrame):
         """
         Inputs:
@@ -99,15 +101,16 @@ class PreprocessingBuilder:
         Purpose:
             - Build preprocessing pipeline
         """
-        cat_cols = list(X.select_dtypes('object').columns)
-        num_cols = list(X.select_dtypes('number').columns)
+        cat_cols = list(X.select_dtypes("object").columns)
+        num_cols = list(X.select_dtypes("number").columns)
         preprocessing = ColumnTransformer(
             transformers=[
-                ('num', StandardScaler(), num_cols),
-                ('cat', OneHotEncoder(), cat_cols)
+                ("num", StandardScaler(), num_cols),
+                ("cat", OneHotEncoder(), cat_cols),
             ]
         )
         return preprocessing, cat_cols, num_cols
+
 
 # Class that handles model training
 class ModelTrainer:
@@ -115,6 +118,7 @@ class ModelTrainer:
     Purpose:
         - Handle model training
     """
+
     def __init__(self, random_state: int = 42, params: dict | None = None):
         """
         Inputs:
@@ -138,7 +142,12 @@ class ModelTrainer:
         rf = RandomForestClassifier(random_state=self.random_state, **self.params)
         return make_pipeline(preprocessing, rf)
 
-    def fit(self, X_train: pd.DataFrame, y_train: pd.Series, preprocessing: ColumnTransformer) -> Pipeline:
+    def fit(
+        self,
+        X_train: pd.DataFrame,
+        y_train: pd.Series,
+        preprocessing: ColumnTransformer,
+    ) -> Pipeline:
         """
         Inputs:
             - X_train: Pandas dataframe with features
@@ -153,13 +162,22 @@ class ModelTrainer:
         model.fit(X_train, y_train)
         return model
 
+
 # Class that handles evaluation and image generation
 class ModelEvaluator:
     """
     Purpose:
         - Model evaluation and image generation
     """
-    def evaluate(self, model: BaseEstimator, X_test: pd.DataFrame, y_test: pd.Series, figures_dir: str, name: str = 'base'):
+
+    def evaluate(
+        self,
+        model: BaseEstimator,
+        X_test: pd.DataFrame,
+        y_test: pd.Series,
+        figures_dir: str,
+        name: str = "base",
+    ):
         """
         Inputs:
             - model: Model that will be use for evaluation
@@ -183,12 +201,7 @@ class ModelEvaluator:
         print("Accuracy:", acc)
 
         plt.figure(figsize=(6, 4))
-        sns.heatmap(
-            confusion_matrix(y_test, y_pred),
-            annot=True,
-            fmt="d",
-            cmap="Blues"
-        )
+        sns.heatmap(confusion_matrix(y_test, y_pred), annot=True, fmt="d", cmap="Blues")
         plt.title(f"Confusion Matrix - RandomForest ({name})")
         plt.xlabel("Predictions")
         plt.ylabel("Real")
@@ -199,12 +212,14 @@ class ModelEvaluator:
 
         return acc, fig_path, report
 
+
 # Class that handles hyperparameter tunning
 class HyperparameterTuner:
     """
-        Purpose:
-            - Handle hyperparameter tuning
+    Purpose:
+        - Handle hyperparameter tuning
     """
+
     def __init__(self, param_dist: dict | None = None):
         """
         Inputs:
@@ -212,15 +227,25 @@ class HyperparameterTuner:
         Purpose:
             - Store hyperparameters attributes
         """
-        self.param_dist = param_dist if param_dist is not None else {
-            "randomforestclassifier__n_estimators": [100, 200, 400],
-            "randomforestclassifier__max_depth": [10, 20, None],
-            "randomforestclassifier__min_samples_split": [2, 5, 10],
-            "randomforestclassifier__min_samples_leaf": [1, 2, 4],
-            "randomforestclassifier__max_features": ["sqrt", "log2"]
-        }
+        self.param_dist = (
+            param_dist
+            if param_dist is not None
+            else {
+                "randomforestclassifier__n_estimators": [100, 200, 400],
+                "randomforestclassifier__max_depth": [10, 20, None],
+                "randomforestclassifier__min_samples_split": [2, 5, 10],
+                "randomforestclassifier__min_samples_leaf": [1, 2, 4],
+                "randomforestclassifier__max_features": ["sqrt", "log2"],
+            }
+        )
 
-    def tune(self, model: Pipeline, X_train: pd.DataFrame, y_train: pd.Series, random_state: int = 42):
+    def tune(
+        self,
+        model: Pipeline,
+        X_train: pd.DataFrame,
+        y_train: pd.Series,
+        random_state: int = 42,
+    ):
         """
         Inputs:
             - model: Pipeline with modeling steps
@@ -238,10 +263,10 @@ class HyperparameterTuner:
             param_distributions=self.param_dist,
             n_iter=30,
             cv=3,
-            scoring='accuracy',
+            scoring="accuracy",
             verbose=1,
             n_jobs=-1,
-            random_state=42
+            random_state=42,
         )
         rf_rscv.fit(X_train, y_train)
         print("Best Hyperparameters:")
@@ -249,12 +274,14 @@ class HyperparameterTuner:
 
         return rf_rscv.best_estimator_, rf_rscv.best_params_
 
+
 # Class that exports feature importances and graphs them
 class FeatureImportanceExporter:
     """
-        Purpose:
-            - Obtain most important features and store graphical representations
+    Purpose:
+        - Obtain most important features and store graphical representations
     """
+
     def export(self, model: Pipeline, figures_dir: str):
         """
         Inputs:
@@ -271,10 +298,9 @@ class FeatureImportanceExporter:
         feature_names = ct.get_feature_names_out()
 
         importances = rf_final.feature_importances_
-        feature_importances = pd.DataFrame({
-            "Feature": feature_names,
-            "Importance": importances
-        }).sort_values("Importance", ascending=False)
+        feature_importances = pd.DataFrame(
+            {"Feature": feature_names, "Importance": importances}
+        ).sort_values("Importance", ascending=False)
 
         fi_path = f"{figures_dir}/feature_importances.csv"
         feature_importances.head(15).to_csv(fi_path, index=False)
@@ -291,11 +317,13 @@ class FeatureImportanceExporter:
 
         return fi_path, top_feat_path
 
-class ModelPersister():
+
+class ModelPersister:
     """
-        Purpose:
-            - Save the trained model
+    Purpose:
+        - Save the trained model
     """
+
     def save(self, model: Pipeline, model_path: str):
         """
         Inputs:
@@ -308,16 +336,16 @@ class ModelPersister():
         print(f"Model saved in {model_path}")
 
 
-
-
 # ==================== Orchestrator Class ==================== #
 
+
 # Orchestrates all preprocessing, training, evaluation, and logging for model processing
-class ExperimentRunner():
+class ExperimentRunner:
     """
-        Purpose:
-            - Handle a complete experiment run with base and optimized hyperparameters
+    Purpose:
+        - Handle a complete experiment run with base and optimized hyperparameters
     """
+
     def __init__(self):
         """
         Purpose:
@@ -353,7 +381,7 @@ class ExperimentRunner():
 
         # Preprocessing pipeline and feature cols
         preprocessing, num_cols, cat_cols = self.pre_builder.build(X_train)
-        
+
         # Start run with mlflow
         mlflow.set_experiment("rf-experiment")
         with mlflow.start_run():
@@ -364,8 +392,10 @@ class ExperimentRunner():
             mlflow.log_params(base_params)
 
             # Base Metric logging
-            acc_base, fig_base, report_base = self.evaluator.evaluate(rf_model, X_test, y_test, figures_dir, name='base')
-            mlflow.log_metric('base_accuracy', acc_base)
+            acc_base, fig_base, report_base = self.evaluator.evaluate(
+                rf_model, X_test, y_test, figures_dir, name="base"
+            )
+            mlflow.log_metric("base_accuracy", acc_base)
             mlflow.log_artifact(fig_base)
 
             # Hyperparameter tunning
@@ -373,8 +403,10 @@ class ExperimentRunner():
             mlflow.log_params(best_params)
 
             # Best Metric Logging
-            acc_opt, fig_opt, report_opt = self.evaluator.evaluate(best_model, X_test, y_test, figures_dir, name='optimized')
-            mlflow.log_metric('optimized_accuracy', acc_opt)
+            acc_opt, fig_opt, report_opt = self.evaluator.evaluate(
+                best_model, X_test, y_test, figures_dir, name="optimized"
+            )
+            mlflow.log_metric("optimized_accuracy", acc_opt)
             mlflow.log_artifact(fig_opt)
 
             # Calculate feature importances
@@ -389,31 +421,30 @@ class ExperimentRunner():
             X_example = X_test[:2]
             mlflow.sklearn.log_model(
                 best_model,
-                name='model',
+                name="model",
                 input_example=X_example,
                 signature=mlflow.models.infer_signature(
                     X_example, best_model.predict(X_example)
-                )
+                ),
             )
-
-
 
 
 # ==================== CLI ==================== #
 
+
 # Orchestrates all preprocessing, training, evaluation, and logging for model processing
 @click.command()
-@click.argument('input_path', type=click.Path(exists=True))
-@click.argument('model_path', type=click.Path())
-@click.argument('figures_dir', type=click.Path())
+@click.argument("input_path", type=click.Path(exists=True))
+@click.argument("model_path", type=click.Path())
+@click.argument("figures_dir", type=click.Path())
 def main(input_path, model_path, figures_dir):
     """
-        Inputs:
-            - input_path: Data file path
-            - model_path: Path to store the model
-            - figures_dir: Directory to store generated images
-        Purpose:
-            - Call a experiment run
+    Inputs:
+        - input_path: Data file path
+        - model_path: Path to store the model
+        - figures_dir: Directory to store generated images
+    Purpose:
+        - Call a experiment run
     """
     runner = ExperimentRunner()
     runner.run(input_path, model_path, figures_dir)
