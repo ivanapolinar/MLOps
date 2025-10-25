@@ -378,7 +378,7 @@ class ExperimentRunner():
             mlflow.log_artifact(fig_opt)
 
             # Calculate feature importances
-            fi_path, top_feat_path = self.fi_exporter.export(best_model, num_cols, cat_cols, figures_dir)
+            fi_path, top_feat_path = self.fi_exporter.export(best_model, figures_dir)
             mlflow.log_artifact(fi_path)
             mlflow.log_artifact(top_feat_path)
 
