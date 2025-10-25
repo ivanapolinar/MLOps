@@ -1,5 +1,6 @@
-import os
+from __future__ import annotations
 
+import os
 import click
 import joblib
 import matplotlib.pyplot as plt
@@ -16,6 +17,7 @@ from sklearn.metrics import (
 from sklearn.model_selection import RandomizedSearchCV, train_test_split
 from sklearn.pipeline import Pipeline, make_pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
+
 
 # ==================== Helper Classes ==================== #
 
@@ -141,9 +143,9 @@ class ModelTrainer:
             - Build training pipeline
         """
         rf = RandomForestClassifier(
-                random_state=self.random_state,
-                **self.params
-            )
+            random_state=self.random_state,
+            **(self.params or {})
+        )
         return make_pipeline(preprocessing, rf)
 
     def fit(
