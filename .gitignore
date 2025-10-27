@@ -104,3 +104,6 @@ reports/*.json
 
 # Mypy cache
 .mypy_cache/
+
+# MLruns
+mlruns*
