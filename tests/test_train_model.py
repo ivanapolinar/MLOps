@@ -8,9 +8,7 @@ from src.models import train_model
 @pytest.fixture
 def dummy_df():
     """
-    Creates a sample DataFrame with numeric, categorical,
-    and target columns, balanced for both classes. Used for
-    all unit tests as test data.
+    Fixture: crea un DataFrame de prueba para todas las funciones.
     """
     data = {
         'f1': [1, 2, 3, 4, 5, 6, 7, 8],
@@ -24,9 +22,7 @@ def dummy_df():
 
 def test_data_repository_load(tmp_path, dummy_df):
     """
-    Test that DataRepository correctly loads a CSV
-    file into a DataFrame, and that loaded data matches
-    the original data including date column conversion.
+    Prueba: load_data carga el CSV correctamente.
     """
     csv_path = tmp_path / "test.csv"
     dummy_df.to_csv(csv_path, index=False)
@@ -39,9 +35,7 @@ def test_data_repository_load(tmp_path, dummy_df):
 
 def test_data_splitter(dummy_df):
     """
-    Test that DataSplitter splits the DataFrame into train
-    and test sets correctly, and that the target and dropped
-    columns are not present in the features.
+    Prueba: split_data divide correctamente el DataFrame.
     """
     splitter = train_model.DataSplitter()
     X_train, X_test, y_train, y_test = splitter.split(dummy_df)
@@ -52,8 +46,7 @@ def test_data_splitter(dummy_df):
 
 def test_preprocessing_builder(dummy_df):
     """
-    Test that PreprocessingBuilder correctly identifies numeric
-    and categorical columns, and returns a valid ColumnTransformer.
+    Prueba: build_preprocessing identifica correctamente columnas.
     """
     builder = train_model.PreprocessingBuilder()
     X = dummy_df.drop(columns=['Load_Type', 'date'])
@@ -64,9 +57,7 @@ def test_preprocessing_builder(dummy_df):
 
 def test_model_trainer(dummy_df):
     """
-    Test that ModelTrainer builds and fits the RandomForest
-    pipeline correctly, and that the model can make predictions
-    on the test set.
+    Prueba: train_base_model entrena y ajusta el modelo.
     """
     splitter = train_model.DataSplitter()
     builder = train_model.PreprocessingBuilder()
@@ -81,9 +72,7 @@ def test_model_trainer(dummy_df):
 
 def test_model_evaluator(tmp_path, dummy_df):
     """
-    Test that ModelEvaluator computes accuracy and
-    classification report, and generates and saves
-    the confusion matrix image correctly.
+    Prueba: evaluate_model calcula métricas y guarda la figura.
     """
     splitter = train_model.DataSplitter()
     builder = train_model.PreprocessingBuilder()
@@ -107,8 +96,7 @@ def test_model_evaluator(tmp_path, dummy_df):
 
 def test_hyperparameter_tuner(dummy_df):
     """
-    Test that HyperparameterTuner performs random search and returns
-    the best fitted model and hyperparameters dictionary.
+    Prueba: hyperparameter_tuning devuelve un estimador entrenado y el dict de hiperparámetros.
     """
     splitter = train_model.DataSplitter()
     builder = train_model.PreprocessingBuilder()
@@ -130,8 +118,7 @@ def test_hyperparameter_tuner(dummy_df):
 
 def test_feature_importance_exporter(tmp_path, dummy_df):
     """
-    Test that FeatureImportanceExporter saves the feature importance CSV file
-    and the top features image, and that the columns are correct.
+    Prueba: save_feature_importance guarda archivos de importancia de variables.
     """
     splitter = train_model.DataSplitter()
     builder = train_model.PreprocessingBuilder()
@@ -150,7 +137,7 @@ def test_feature_importance_exporter(tmp_path, dummy_df):
 
 def test_model_persister(tmp_path, dummy_df):
     """
-    Test that ModelPersister correctly saves the trained model to disk.
+    Prueba: save_model guarda el modelo correctamente.
     """
     splitter = train_model.DataSplitter()
     builder = train_model.PreprocessingBuilder()

@@ -14,6 +14,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import (
     accuracy_score, classification_report, confusion_matrix
 )
+from dotenv import load_dotenv
 from sklearn.model_selection import RandomizedSearchCV, train_test_split
 from sklearn.pipeline import Pipeline, make_pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
@@ -466,8 +467,106 @@ def main(input_path, model_path, figures_dir):
     Purpose:
         - Call a experiment run
     """
-    runner = ExperimentRunner()
-    runner.run(input_path, model_path, figures_dir)
+    os.makedirs(os.path.dirname(model_path), exist_ok=True)
+    os.makedirs(figures_dir, exist_ok=True)
+
+    # Cargar variables de entorno desde .env si existe
+    try:
+        load_dotenv(override=True)
+    except Exception:
+        pass
+
+    # Configuración de MLflow desde variables de entorno (si existen)
+    # MLFLOW_TRACKING_URI: por ejemplo, http://localhost:5000 o ruta local ./mlruns
+    tracking_uri = os.getenv("MLFLOW_TRACKING_URI")
+    if tracking_uri:
+        mlflow.set_tracking_uri(tracking_uri)
+    # MLFLOW_EXPERIMENT: nombre del experimento (por defecto 'steel_energy')
+    experiment_name = os.getenv("MLFLOW_EXPERIMENT", "steel_energy")
+    try:
+        mlflow.set_experiment(experiment_name)
+    except Exception:
+        pass
+    df = load_data(input_path)
+    X_train, X_test, y_train, y_test = split_data(df)
+    preprocessing, num_cols, cat_cols = build_preprocessing(X_train)
+
+    # MLflow tracking
+    with mlflow.start_run():
+        # Entrenamiento base y log de parámetros
+        base_params = {}
+        rf_model = train_base_model(
+            X_train, y_train,
+            preprocessing,
+            base_params
+        )
+        mlflow.log_params(base_params)
+        acc_base, fig_base, report_base = evaluate_model(
+            rf_model,
+            X_test,
+            y_test,
+            figures_dir,
+            name="base"
+        )
+        mlflow.log_metric("base_accuracy", acc_base)
+        mlflow.log_artifact(fig_base)
+
+        # Hiperparámetros
+        best_model, best_params = hyperparameter_tuning(
+            rf_model,
+            X_train,
+            y_train
+        )
+        mlflow.log_params(best_params)
+        acc_opt, fig_opt, report_opt = evaluate_model(
+            best_model,
+            X_test,
+            y_test,
+            figures_dir,
+            name="optimized"
+        )
+        mlflow.log_metric("optimized_accuracy", acc_opt)
+        mlflow.log_artifact(fig_opt)
+
+        # Importancia de variables
+        fi_path, top_feat_path = save_feature_importance(
+            best_model,
+            num_cols,
+            cat_cols,
+            figures_dir
+        )
+        mlflow.log_artifact(fi_path)
+        mlflow.log_artifact(top_feat_path)
+
+        # Guardar modelo local
+        save_model(best_model, model_path)
+
+        # Loguear modelo en MLflow; registrar en el Model Registry solo si está habilitado
+        X_example = X_test[:2]
+        register_flag = os.getenv("MLFLOW_REGISTER_IN_REGISTRY", "false").lower() == "true"
+        tracking_uri = mlflow.get_tracking_uri() or ""
+        can_register = register_flag and tracking_uri.startswith("http")
+        if can_register:
+            mlflow.sklearn.log_model(
+                best_model,
+                artifact_path="model",
+                input_example=X_example,
+                signature=mlflow.models.infer_signature(
+                    X_example,
+                    best_model.predict(X_example)
+                ),
+                registered_model_name=os.getenv("MLFLOW_REGISTERED_MODEL_NAME", "SteelEnergyRF")
+            )
+        else:
+            mlflow.sklearn.log_model(
+                best_model,
+                artifact_path="model",
+                input_example=X_example,
+                signature=mlflow.models.infer_signature(
+                    X_example,
+                    best_model.predict(X_example)
+                ),
+            )
 
 
 if __name__ == "__main__":
