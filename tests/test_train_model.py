@@ -8,7 +8,7 @@ from src.models import train_model
 @pytest.fixture
 def dummy_df():
     """
-    Fixture: create a test DataFrame for all functions.
+    Fixture: crea un DataFrame de prueba para todas las funciones.
     """
     # Ensure at least 3 observations for class
     data = {
@@ -23,7 +23,7 @@ def dummy_df():
 
 def test_load_data(tmp_path, dummy_df):
     """
-    Test, whether load_data load CSV correctly
+    Prueba: load_data carga el CSV correctamente.
     """
     csv_path = tmp_path / "test.csv"
     dummy_df.to_csv(csv_path, index=False)
@@ -36,7 +36,7 @@ def test_load_data(tmp_path, dummy_df):
 
 def test_split_data(dummy_df):
     """
-    Test whether split_data divide the DataFrame correctly.
+    Prueba: split_data divide correctamente el DataFrame.
     """
     X_train, X_test, y_train, y_test = train_model.split_data(
         dummy_df,
@@ -53,7 +53,7 @@ def test_split_data(dummy_df):
 
 def test_build_preprocessing(dummy_df):
     """
-    Test, whether build_preprocessing identify columns correctly.
+    Prueba: build_preprocessing identifica correctamente columnas.
     """
     X = dummy_df.drop(columns=['Load_Type', 'date'])
     preprocessing, num_cols, cat_cols = train_model.build_preprocessing(X)
@@ -66,7 +66,7 @@ def test_build_preprocessing(dummy_df):
 
 def test_train_base_model(dummy_df):
     """
-    Test, whether train_base_model train and adjust the model.
+    Prueba: train_base_model entrena y ajusta el modelo.
     """
     X_train, X_test, y_train, y_test = train_model.split_data(
         dummy_df,
@@ -89,7 +89,7 @@ def test_train_base_model(dummy_df):
 
 def test_evaluate_model(tmp_path, dummy_df):
     """
-    Test evaluate_model calculates metrics and saves the figure.
+    Prueba: evaluate_model calcula métricas y guarda la figura.
     """
     X_train, X_test, y_train, y_test = train_model.split_data(
         dummy_df,
@@ -118,8 +118,7 @@ def test_evaluate_model(tmp_path, dummy_df):
 
 def test_hyperparameter_tuning(dummy_df):
     """
-    Prove that hyperparameter_tuning returns a
-    trained estimator and hyperparameter dict.
+    Prueba: hyperparameter_tuning devuelve un estimador entrenado y el dict de hiperparámetros.
     """
     X_train, X_test, y_train, y_test = train_model.split_data(
         dummy_df,
@@ -146,7 +145,7 @@ def test_hyperparameter_tuning(dummy_df):
 
 def test_save_feature_importance(tmp_path, dummy_df):
     """
-    Test that save_feature_importance saves variable importance files.
+    Prueba: save_feature_importance guarda archivos de importancia de variables.
     """
     X_train, X_test, y_train, y_test = train_model.split_data(
         dummy_df,
@@ -175,7 +174,7 @@ def test_save_feature_importance(tmp_path, dummy_df):
 
 def test_save_model(tmp_path, dummy_df):
     """
-    Test whether save_model save model correctly.
+    Prueba: save_model guarda el modelo correctamente.
     """
     X_train, X_test, y_train, y_test = train_model.split_data(
         dummy_df,

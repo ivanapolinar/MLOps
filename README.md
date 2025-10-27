@@ -129,3 +129,50 @@ Esto traerá la configuración y descargará los datos desde S3.
 - **No subas archivos grandes (.csv, modelos) directamente a Git. Usa DVC y S3.**
 - **No compartas tus credenciales AWS.**
 - Si tienes problemas con DVC o acceso, consulta esta guía o pregunta al equipo.
+
+---
+
+## MLflow: Experimentos y Registro de Modelos
+
+Esta sección resume cómo crear/usar experimentos con MLflow, tanto en modo local (por archivo) como con servidor (UI + Model Registry).
+
+### Modo 1: Local por archivo (sin servidor)
+- Configura `.env` (o variables de entorno):
+  - `MLFLOW_TRACKING_URI=file:./mlruns`
+  - `MLFLOW_EXPERIMENT=steel_energy`
+  - `MLFLOW_REGISTER_IN_REGISTRY=false`
+- Entrena y registra corridas en `./mlruns`:
+  - `make data && make train`
+- Abrir la UI para explorar experimentos y corridas:
+  - `make mlflow-ui`
+  - Abre `http://localhost:5000`
+- Crear un experimento explícitamente (opcional):
+  - `mlflow experiments create -n steel_energy`
+  - Nota: el código ya crea el experimento si no existe (`mlflow.set_experiment`).
+
+### Modo 2: Servidor MLflow (UI + Model Registry)
+- Inicia el servidor (artefactos locales, con proxy de artefactos):
+  - `make mlflow-server-local-modern`
+- Configura `.env` (o exporta en shell):
+  - `MLFLOW_TRACKING_URI=http://localhost:5000`
+  - `MLFLOW_EXPERIMENT=steel_energy`
+  - `MLFLOW_REGISTER_IN_REGISTRY=true`
+  - `MLFLOW_REGISTERED_MODEL_NAME=SteelEnergyRF`
+- Crea el experimento (opcional, también se crea automáticamente desde el código):
+  - Desde la UI: botón “Create” en la vista de Experimentos
+  - O por CLI: `mlflow experiments create -n steel_energy`
+- Entrena y registra corridas/modelos:
+  - `make data && make train`
+- Barrido de hiperparámetros (múltiples corridas):
+  - `make sweep`
+- Promoción/rollback de modelos:
+  - En la UI, sección “Models” → elige versión → “Transition to Staging/Production” o vuelve a una versión anterior.
+
+### Consejos y resolución de problemas
+- Ver a qué servidor apunta el cliente:
+  - `python3 -c "import mlflow; print(mlflow.get_tracking_uri())"`
+- Error 500 al subir artefactos con servidor:
+  - Asegura usar el target “modern” que activa `--serve-artifacts`.
+  - Verifica que `MLFLOW_TRACKING_URI` apunte a `http://localhost:5000` y que el server esté levantado.
+- Si trabajas en modo local (file store) y no ves corridas en la UI del servidor:
+  - Usa `make mlflow-ui` para leer `./mlruns` o cambia `MLFLOW_TRACKING_URI` a `http://localhost:5000` y levanta el server.

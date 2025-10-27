@@ -17,6 +17,7 @@ from sklearn.ensemble import RandomForestClassifier
 import joblib
 import mlflow
 import mlflow.sklearn
+from dotenv import load_dotenv
 
 
 def load_data(input_path):
@@ -296,6 +297,24 @@ def main(input_path, model_path, figures_dir):
     """
     os.makedirs(os.path.dirname(model_path), exist_ok=True)
     os.makedirs(figures_dir, exist_ok=True)
+
+    # Cargar variables de entorno desde .env si existe
+    try:
+        load_dotenv(override=True)
+    except Exception:
+        pass
+
+    # Configuración de MLflow desde variables de entorno (si existen)
+    # MLFLOW_TRACKING_URI: por ejemplo, http://localhost:5000 o ruta local ./mlruns
+    tracking_uri = os.getenv("MLFLOW_TRACKING_URI")
+    if tracking_uri:
+        mlflow.set_tracking_uri(tracking_uri)
+    # MLFLOW_EXPERIMENT: nombre del experimento (por defecto 'steel_energy')
+    experiment_name = os.getenv("MLFLOW_EXPERIMENT", "steel_energy")
+    try:
+        mlflow.set_experiment(experiment_name)
+    except Exception:
+        pass
     df = load_data(input_path)
     X_train, X_test, y_train, y_test = split_data(df)
     preprocessing, num_cols, cat_cols = build_preprocessing(X_train)
@@ -347,18 +366,35 @@ def main(input_path, model_path, figures_dir):
         mlflow.log_artifact(fi_path)
         mlflow.log_artifact(top_feat_path)
 
-        # Guardar modelo local y en MLflow
+        # Guardar modelo local
         save_model(best_model, model_path)
+
+        # Loguear modelo en MLflow; registrar en el Model Registry solo si está habilitado
         X_example = X_test[:2]
-        mlflow.sklearn.log_model(
-            best_model,
-            name="model",
-            input_example=X_example,
-            signature=mlflow.models.infer_signature(
-                X_example,
-                best_model.predict(X_example)
+        register_flag = os.getenv("MLFLOW_REGISTER_IN_REGISTRY", "false").lower() == "true"
+        tracking_uri = mlflow.get_tracking_uri() or ""
+        can_register = register_flag and tracking_uri.startswith("http")
+        if can_register:
+            mlflow.sklearn.log_model(
+                best_model,
+                artifact_path="model",
+                input_example=X_example,
+                signature=mlflow.models.infer_signature(
+                    X_example,
+                    best_model.predict(X_example)
+                ),
+                registered_model_name=os.getenv("MLFLOW_REGISTERED_MODEL_NAME", "SteelEnergyRF")
             )
-        )
+        else:
+            mlflow.sklearn.log_model(
+                best_model,
+                artifact_path="model",
+                input_example=X_example,
+                signature=mlflow.models.infer_signature(
+                    X_example,
+                    best_model.predict(X_example)
+                ),
+            )
 
 
 if __name__ == "__main__":

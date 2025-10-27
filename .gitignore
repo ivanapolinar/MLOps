@@ -79,9 +79,21 @@ target/
 # Jupyter NB Checkpoints
 .ipynb_checkpoints/
 
-# exclude data .dvc from source control
+# Excluir artefactos generados y mantener solo metadatos (.dvc)
 !data/**/*.dvc
-!models/*.joblib
+
+# Modelos entrenados (versionados con DVC, no con Git)
+models/*.joblib
+
+# MLflow (runs y artefactos locales)
+mlruns/
+.mlflow_artifacts/
+
+# Reportes generados
+reports/figures/
+reports/*.png
+reports/*.csv
+reports/*.json
 
 # Mac OS-specific storage files
 .DS_Store
