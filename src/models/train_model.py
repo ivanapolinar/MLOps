@@ -480,11 +480,15 @@ def split_data(df: pd.DataFrame):
 
 
 def build_preprocessing(X: pd.DataFrame):
-    """Construye el preprocesamiento y retorna (preprocessing, num_cols, cat_cols).
+    """Construye el preprocesamiento y retorna tuplas.
+
+    Retorna:
+        (preprocessing, num_cols, cat_cols)
 
     Nota:
-        Internamente PreprocessingBuilder.build retorna (preprocessing, cat_cols, num_cols),
-        pero por compatibilidad devolvemos (preprocessing, num_cols, cat_cols).
+        Internamente PreprocessingBuilder.build retorna
+        (preprocessing, cat_cols, num_cols), pero por compatibilidad
+        devolvemos (preprocessing, num_cols, cat_cols).
     """
     preprocessing, cat_cols, num_cols = PreprocessingBuilder().build(X)
     return preprocessing, num_cols, cat_cols
@@ -496,7 +500,7 @@ def train_base_model(
     preprocessing: ColumnTransformer,
     params: dict | None = None,
 ):
-    """Entrena una tubería (pipeline) RandomForest con el preprocesamiento y parámetros dados."""
+    """Entrena pipeline RF con preprocesamiento y parámetros."""
     return ModelTrainer(params=params).fit(X_train, y_train, preprocessing)
 
 
@@ -507,8 +511,14 @@ def evaluate_model(
     figures_dir: str,
     name: str = "base",
 ):
-    """Evalúa el modelo y produce métricas y la figura de matriz de confusión."""
-    return ModelEvaluator().evaluate(model, X_test, y_test, figures_dir, name=name)
+    """Evalúa el modelo y genera métricas y figura de confusión."""
+    return ModelEvaluator().evaluate(
+        model,
+        X_test,
+        y_test,
+        figures_dir,
+        name=name,
+    )
 
 
 def hyperparameter_tuning(
@@ -516,7 +526,7 @@ def hyperparameter_tuning(
     X_train: pd.DataFrame,
     y_train: pd.Series,
 ):
-    """Ejecuta RandomizedSearchCV sobre el modelo y retorna el mejor modelo y sus parámetros."""
+    """Ejecuta RandomizedSearchCV y retorna mejor modelo y parámetros."""
     return HyperparameterTuner().tune(model, X_train, y_train)
 
 
@@ -526,7 +536,10 @@ def save_feature_importance(
     cat_cols,
     figures_dir: str,
 ):
-    """Exporta importancias de variables. num_cols/cat_cols se mantienen por compatibilidad de API."""
+    """Exporta importancias.
+
+    num_cols/cat_cols se mantienen por compatibilidad.
+    """
     return FeatureImportanceExporter().export(model, figures_dir)
 
 
@@ -562,11 +575,13 @@ def main(input_path, model_path, figures_dir):
         pass
 
     # Configuración de MLflow desde variables de entorno (si existen)
-    # MLFLOW_TRACKING_URI: por ejemplo, http://localhost:5000 o ruta local ./mlruns
+    # MLFLOW_TRACKING_URI: por ejemplo, http://localhost:5000
+    # o una ruta local tipo ./mlruns
     tracking_uri = os.getenv("MLFLOW_TRACKING_URI")
     if tracking_uri:
         mlflow.set_tracking_uri(tracking_uri)
-    # MLFLOW_EXPERIMENT: nombre del experimento (por defecto 'steel_energy')
+    # MLFLOW_EXPERIMENT: nombre del experimento
+    # (por defecto 'steel_energy')
     experiment_name = os.getenv("MLFLOW_EXPERIMENT", "steel_energy")
     try:
         mlflow.set_experiment(experiment_name)
@@ -626,13 +641,17 @@ def main(input_path, model_path, figures_dir):
         # Guardar modelo local
         save_model(best_model, model_path)
 
-        # Loguear modelo en MLflow; registrar en el Model Registry solo si está habilitado
+        # Loguear modelo en MLflow;
+        # registrar en el Model Registry solo si está habilitado
         # Evitar warning de esquema de MLflow con columnas enteras sin NAs
         X_example = X_test[:2].copy()
         int_cols = list(X_example.select_dtypes(include="integer").columns)
         if int_cols:
             X_example[int_cols] = X_example[int_cols].astype("float64")
-        register_flag = os.getenv("MLFLOW_REGISTER_IN_REGISTRY", "false").lower() == "true"
+        register_flag = (
+            os.getenv("MLFLOW_REGISTER_IN_REGISTRY", "false").lower()
+            == "true"
+        )
         tracking_uri = mlflow.get_tracking_uri() or ""
         can_register = register_flag and tracking_uri.startswith("http")
         if can_register:
@@ -644,7 +663,10 @@ def main(input_path, model_path, figures_dir):
                     X_example,
                     best_model.predict(X_example)
                 ),
-                registered_model_name=os.getenv("MLFLOW_REGISTERED_MODEL_NAME", "SteelEnergyRF")
+                registered_model_name=os.getenv(
+                    "MLFLOW_REGISTERED_MODEL_NAME",
+                    "SteelEnergyRF",
+                )
             )
         else:
             mlflow.sklearn.log_model(
