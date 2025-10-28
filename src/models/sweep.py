@@ -1,11 +1,9 @@
 import os
-import json
 from datetime import datetime
 from typing import List, Dict
 
 import click
 import numpy as np
-import pandas as pd
 
 from src.models.train_model import (
     load_data,
@@ -34,7 +32,7 @@ def ensure_mlflow_from_env():
 
 
 def param_grid_default() -> Dict[str, List]:
-    """Devuelve una grilla de hiperparámetros por defecto para RandomForest."""
+    """Devuelve una grilla por defecto para RandomForest."""
     return {
         "n_estimators": [100, 200, 400],
         "max_depth": [10, 20, None],
@@ -45,10 +43,10 @@ def param_grid_default() -> Dict[str, List]:
 
 
 def expand_grid(grid: Dict[str, List]) -> List[Dict]:
-    """Expande un diccionario de listas a una lista de combinaciones (productos).
+    """Expande listas a combinaciones (producto cartesiano).
 
-    Nota: Para evitar explosión combinatoria, esta función recorta el total
-    a las primeras N combinaciones si la grilla es muy grande.
+    Nota: para evitar explosión combinatoria, se limita a las primeras
+    N combinaciones si la grilla es muy grande.
     """
     from itertools import product
     keys = list(grid.keys())
@@ -65,11 +63,11 @@ def expand_grid(grid: Dict[str, List]) -> List[Dict]:
 @click.argument('model_out', type=click.Path())
 @click.argument('figures_dir', type=click.Path())
 def main(input_path: str, model_out: str, figures_dir: str):
-    """Barrido de hiperparámetros de RandomForest con logging en MLflow.
+    """Barrido de hiperparámetros con logging en MLflow.
 
     - Lee el dataset, separa train/test, construye el preprocesamiento.
-    - Itera sobre una grilla de hiperparámetros y registra runs en MLflow.
-    - Selecciona la mejor combinación por accuracy en test y guarda el modelo.
+    - Itera sobre una grilla y registra runs en MLflow.
+    - Selecciona la mejor combinación por accuracy y guarda el modelo.
     - Exporta importancia de variables del mejor modelo.
     """
     os.makedirs(os.path.dirname(model_out), exist_ok=True)
@@ -90,14 +88,26 @@ def main(input_path: str, model_out: str, figures_dir: str):
     best_fig = None
 
     for i, params in enumerate(candidates, start=1):
-        run_name = f"sweep_rf_{i}_{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}"
+        run_name = (
+            "sweep_rf_"
+            f"{i}_"
+            f"{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}"
+        )
         with mlflow.start_run(run_name=run_name):
             # Evitar duplicar random_state (ya se fija en train_base_model)
-            safe_params = {k: v for k, v in params.items() if k != "random_state"}
+            safe_params = {
+                k: v for k, v in params.items() if k != "random_state"
+            }
             mlflow.log_params(safe_params)
-            model = train_base_model(X_train, y_train, preprocessing, safe_params)
+            model = train_base_model(
+                X_train, y_train, preprocessing, safe_params
+            )
             acc, fig_path, report = evaluate_model(
-                model, X_test, y_test, figures_dir, name=run_name
+                model,
+                X_test,
+                y_test,
+                figures_dir,
+                name=run_name,
             )
             mlflow.log_metric("accuracy", float(acc))
             if fig_path:
@@ -120,30 +130,51 @@ def main(input_path: str, model_out: str, figures_dir: str):
             mlflow.log_artifact(best_fig)
 
         # Importancia de variables y guardado del modelo
-        fi_csv, top_png = save_feature_importance(best_model, num_cols, cat_cols, figures_dir)
+        fi_csv, top_png = save_feature_importance(
+            best_model,
+            num_cols,
+            cat_cols,
+            figures_dir,
+        )
         mlflow.log_artifact(fi_csv)
         mlflow.log_artifact(top_png)
         save_model(best_model, model_out)
 
         # Registro de modelo en MLflow Model Registry (opcional)
         try:
-            example = X_test[:2]
-            register_flag = os.getenv("MLFLOW_REGISTER_IN_REGISTRY", "false").lower() == "true"
+            # Evitar warning de esquema de MLflow con columnas enteras sin NAs
+            example = X_test[:2].copy()
+            int_cols = list(example.select_dtypes(include="integer").columns)
+            if int_cols:
+                example[int_cols] = example[int_cols].astype("float64")
+            register_flag = (
+                os.getenv("MLFLOW_REGISTER_IN_REGISTRY", "false")
+                .lower() == "true"
+            )
             tracking_uri = mlflow.get_tracking_uri() or ""
             if register_flag and tracking_uri.startswith("http"):
                 mlflow_sklearn.log_model(
                     best_model,
                     artifact_path="model",
                     input_example=example,
-                    signature=mlflow.models.infer_signature(example, best_model.predict(example)),
-                    registered_model_name=os.getenv("MLFLOW_REGISTERED_MODEL_NAME", "SteelEnergyRF"),
+                    signature=mlflow.models.infer_signature(
+                        example,
+                        best_model.predict(example),
+                    ),
+                    registered_model_name=os.getenv(
+                        "MLFLOW_REGISTERED_MODEL_NAME",
+                        "SteelEnergyRF",
+                    ),
                 )
             else:
                 mlflow_sklearn.log_model(
                     best_model,
                     artifact_path="model",
                     input_example=example,
-                    signature=mlflow.models.infer_signature(example, best_model.predict(example)),
+                    signature=mlflow.models.infer_signature(
+                        example,
+                        best_model.predict(example),
+                    ),
                 )
         except Exception:
             pass

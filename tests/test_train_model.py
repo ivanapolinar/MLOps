@@ -96,7 +96,7 @@ def test_model_evaluator(tmp_path, dummy_df):
 
 def test_hyperparameter_tuner(dummy_df):
     """
-    Prueba: hyperparameter_tuning devuelve un estimador entrenado y el dict de hiperparámetros.
+    Prueba: hyperparameter_tuning devuelve estimador entrenado y parámetros.
     """
     splitter = train_model.DataSplitter()
     builder = train_model.PreprocessingBuilder()
@@ -118,7 +118,7 @@ def test_hyperparameter_tuner(dummy_df):
 
 def test_feature_importance_exporter(tmp_path, dummy_df):
     """
-    Prueba: save_feature_importance guarda archivos de importancia de variables.
+    Prueba: save_feature_importance guarda archivos de importancia.
     """
     splitter = train_model.DataSplitter()
     builder = train_model.PreprocessingBuilder()
