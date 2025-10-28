@@ -477,8 +477,7 @@ def main(input_path, model_path, figures_dir):
         pass
 
     # Configuración de MLflow desde variables de entorno (si existen)
-    # MLFLOW_TRACKING_URI:
-    # por ejemplo, http://localhost:5000 o ruta local ./mlruns
+    # MLFLOW_TRACKING_URI: por ejemplo, http://localhost:5000 o ruta local ./mlruns
     tracking_uri = os.getenv("MLFLOW_TRACKING_URI")
     if tracking_uri:
         mlflow.set_tracking_uri(tracking_uri)
@@ -542,13 +541,9 @@ def main(input_path, model_path, figures_dir):
         # Guardar modelo local
         save_model(best_model, model_path)
 
-        # Loguear modelo en MLflow; registrar en el Model
-        # Registry solo si está habilitado
+        # Loguear modelo en MLflow; registrar en el Model Registry solo si está habilitado
         X_example = X_test[:2]
-        register_flag = os.getenv(
-            "MLFLOW_REGISTER_IN_REGISTRY",
-            "false"
-        ).lower() == "true"
+        register_flag = os.getenv("MLFLOW_REGISTER_IN_REGISTRY", "false").lower() == "true"
         tracking_uri = mlflow.get_tracking_uri() or ""
         can_register = register_flag and tracking_uri.startswith("http")
         if can_register:
@@ -560,10 +555,7 @@ def main(input_path, model_path, figures_dir):
                     X_example,
                     best_model.predict(X_example)
                 ),
-                registered_model_name=os.getenv(
-                    "MLFLOW_REGISTERED_MODEL_NAME",
-                    "SteelEnergyRF"
-                )
+                registered_model_name=os.getenv("MLFLOW_REGISTERED_MODEL_NAME", "SteelEnergyRF")
             )
         else:
             mlflow.sklearn.log_model(

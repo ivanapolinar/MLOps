@@ -1,9 +1,11 @@
 import os
+import json
 from datetime import datetime
 from typing import List, Dict
 
 import click
 import numpy as np
+import pandas as pd
 
 from src.models.train_model import (
     load_data,
@@ -43,8 +45,7 @@ def param_grid_default() -> Dict[str, List]:
 
 
 def expand_grid(grid: Dict[str, List]) -> List[Dict]:
-    """
-    Expande un diccionario de listas a una lista de combinaciones (productos).
+    """Expande un diccionario de listas a una lista de combinaciones (productos).
 
     Nota: Para evitar explosión combinatoria, esta función recorta el total
     a las primeras N combinaciones si la grilla es muy grande.
@@ -89,21 +90,12 @@ def main(input_path: str, model_out: str, figures_dir: str):
     best_fig = None
 
     for i, params in enumerate(candidates, start=1):
-        run_name = \
-            f"sweep_rf_{i}_{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}"
+        run_name = f"sweep_rf_{i}_{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}"
         with mlflow.start_run(run_name=run_name):
             # Evitar duplicar random_state (ya se fija en train_base_model)
-            safe_params = {
-                k: v for k,
-                v in params.items() if k != "random_state"
-            }
+            safe_params = {k: v for k, v in params.items() if k != "random_state"}
             mlflow.log_params(safe_params)
-            model = train_base_model(
-                X_train,
-                y_train,
-                preprocessing,
-                safe_params
-            )
+            model = train_base_model(X_train, y_train, preprocessing, safe_params)
             acc, fig_path, report = evaluate_model(
                 model, X_test, y_test, figures_dir, name=run_name
             )
@@ -128,12 +120,7 @@ def main(input_path: str, model_out: str, figures_dir: str):
             mlflow.log_artifact(best_fig)
 
         # Importancia de variables y guardado del modelo
-        fi_csv, top_png = save_feature_importance(
-            best_model,
-            num_cols,
-            cat_cols,
-            figures_dir
-        )
+        fi_csv, top_png = save_feature_importance(best_model, num_cols, cat_cols, figures_dir)
         mlflow.log_artifact(fi_csv)
         mlflow.log_artifact(top_png)
         save_model(best_model, model_out)
@@ -141,34 +128,22 @@ def main(input_path: str, model_out: str, figures_dir: str):
         # Registro de modelo en MLflow Model Registry (opcional)
         try:
             example = X_test[:2]
-            register_flag = os.getenv(
-                "MLFLOW_REGISTER_IN_REGISTRY",
-                "false"
-            ).lower() == "true"
+            register_flag = os.getenv("MLFLOW_REGISTER_IN_REGISTRY", "false").lower() == "true"
             tracking_uri = mlflow.get_tracking_uri() or ""
             if register_flag and tracking_uri.startswith("http"):
                 mlflow_sklearn.log_model(
                     best_model,
                     artifact_path="model",
                     input_example=example,
-                    signature=mlflow.models.infer_signature(
-                        example,
-                        best_model.predict(example)
-                    ),
-                    registered_model_name=os.getenv(
-                        "MLFLOW_REGISTERED_MODEL_NAME",
-                        "SteelEnergyRF"
-                    ),
+                    signature=mlflow.models.infer_signature(example, best_model.predict(example)),
+                    registered_model_name=os.getenv("MLFLOW_REGISTERED_MODEL_NAME", "SteelEnergyRF"),
                 )
             else:
                 mlflow_sklearn.log_model(
                     best_model,
                     artifact_path="model",
                     input_example=example,
-                    signature=mlflow.models.infer_signature(
-                        example,
-                        best_model.predict(example)
-                    ),
+                    signature=mlflow.models.infer_signature(example, best_model.predict(example)),
                 )
         except Exception:
             pass
