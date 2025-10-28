@@ -200,11 +200,12 @@ class ModelEvaluator:
             - Evaluate the model performance
         """
         y_pred = model.predict(X_test)
-        report = classification_report(y_test, y_pred)
+        # Evitar UndefinedMetricWarning cuando alguna clase no es predicha
+        report = classification_report(y_test, y_pred, zero_division=0)
         acc = accuracy_score(y_test, y_pred)
 
         print(f"Classification Report ({name}):")
-        print(classification_report(y_test, y_pred))
+        print(classification_report(y_test, y_pred, zero_division=0))
         print("Accuracy:", acc)
 
         plt.figure(figsize=(6, 4))
@@ -439,7 +440,11 @@ class ExperimentRunner:
             self.persister.save(best_model, model_path)
 
             # Log example model
-            X_example = X_test[:2]
+            # Evitar warning de esquema de MLflow con columnas enteras sin NAs
+            X_example = X_test[:2].copy()
+            int_cols = list(X_example.select_dtypes(include="integer").columns)
+            if int_cols:
+                X_example[int_cols] = X_example[int_cols].astype("float64")
             mlflow.sklearn.log_model(
                 best_model,
                 name="model",
@@ -448,6 +453,99 @@ class ExperimentRunner:
                     X_example, best_model.predict(X_example)
                 ),
             )
+
+
+# ==================== Envoltorios (API funcional) ==================== #
+
+
+def load_data(input_path: str) -> pd.DataFrame:
+    """Carga un dataset CSV usando DataRepository.
+
+    Parámetros:
+        input_path: Ruta al archivo CSV de entrada.
+
+    Retorna:
+        DataFrame con los datos cargados.
+    """
+    return DataRepository().load(input_path)
+
+
+def split_data(df: pd.DataFrame):
+    """Divide el DataFrame en train/test usando la configuración por defecto.
+
+    Retorna:
+        X_train, X_test, y_train, y_test
+    """
+    return DataSplitter().split(df)
+
+
+def build_preprocessing(X: pd.DataFrame):
+    """Construye el preprocesamiento y retorna tuplas.
+
+    Retorna:
+        (preprocessing, num_cols, cat_cols)
+
+    Nota:
+        Internamente PreprocessingBuilder.build retorna
+        (preprocessing, cat_cols, num_cols), pero por compatibilidad
+        devolvemos (preprocessing, num_cols, cat_cols).
+    """
+    preprocessing, cat_cols, num_cols = PreprocessingBuilder().build(X)
+    return preprocessing, num_cols, cat_cols
+
+
+def train_base_model(
+    X_train: pd.DataFrame,
+    y_train: pd.Series,
+    preprocessing: ColumnTransformer,
+    params: dict | None = None,
+):
+    """Entrena pipeline RF con preprocesamiento y parámetros."""
+    return ModelTrainer(params=params).fit(X_train, y_train, preprocessing)
+
+
+def evaluate_model(
+    model: BaseEstimator,
+    X_test: pd.DataFrame,
+    y_test: pd.Series,
+    figures_dir: str,
+    name: str = "base",
+):
+    """Evalúa el modelo y genera métricas y figura de confusión."""
+    return ModelEvaluator().evaluate(
+        model,
+        X_test,
+        y_test,
+        figures_dir,
+        name=name,
+    )
+
+
+def hyperparameter_tuning(
+    model: Pipeline,
+    X_train: pd.DataFrame,
+    y_train: pd.Series,
+):
+    """Ejecuta RandomizedSearchCV y retorna mejor modelo y parámetros."""
+    return HyperparameterTuner().tune(model, X_train, y_train)
+
+
+def save_feature_importance(
+    model: Pipeline,
+    num_cols,
+    cat_cols,
+    figures_dir: str,
+):
+    """Exporta importancias.
+
+    num_cols/cat_cols se mantienen por compatibilidad.
+    """
+    return FeatureImportanceExporter().export(model, figures_dir)
+
+
+def save_model(model: Pipeline, model_path: str):
+    """Persiste el modelo entrenado en disco."""
+    return ModelPersister().save(model, model_path)
 
 
 # ==================== CLI ==================== #
@@ -477,11 +575,13 @@ def main(input_path, model_path, figures_dir):
         pass
 
     # Configuración de MLflow desde variables de entorno (si existen)
-    # MLFLOW_TRACKING_URI: por ejemplo, http://localhost:5000 o ruta local ./mlruns
+    # MLFLOW_TRACKING_URI: por ejemplo, http://localhost:5000
+    # o una ruta local tipo ./mlruns
     tracking_uri = os.getenv("MLFLOW_TRACKING_URI")
     if tracking_uri:
         mlflow.set_tracking_uri(tracking_uri)
-    # MLFLOW_EXPERIMENT: nombre del experimento (por defecto 'steel_energy')
+    # MLFLOW_EXPERIMENT: nombre del experimento
+    # (por defecto 'steel_energy')
     experiment_name = os.getenv("MLFLOW_EXPERIMENT", "steel_energy")
     try:
         mlflow.set_experiment(experiment_name)
@@ -541,9 +641,17 @@ def main(input_path, model_path, figures_dir):
         # Guardar modelo local
         save_model(best_model, model_path)
 
-        # Loguear modelo en MLflow; registrar en el Model Registry solo si está habilitado
-        X_example = X_test[:2]
-        register_flag = os.getenv("MLFLOW_REGISTER_IN_REGISTRY", "false").lower() == "true"
+        # Loguear modelo en MLflow;
+        # registrar en el Model Registry solo si está habilitado
+        # Evitar warning de esquema de MLflow con columnas enteras sin NAs
+        X_example = X_test[:2].copy()
+        int_cols = list(X_example.select_dtypes(include="integer").columns)
+        if int_cols:
+            X_example[int_cols] = X_example[int_cols].astype("float64")
+        register_flag = (
+            os.getenv("MLFLOW_REGISTER_IN_REGISTRY", "false").lower()
+            == "true"
+        )
         tracking_uri = mlflow.get_tracking_uri() or ""
         can_register = register_flag and tracking_uri.startswith("http")
         if can_register:
@@ -555,7 +663,10 @@ def main(input_path, model_path, figures_dir):
                     X_example,
                     best_model.predict(X_example)
                 ),
-                registered_model_name=os.getenv("MLFLOW_REGISTERED_MODEL_NAME", "SteelEnergyRF")
+                registered_model_name=os.getenv(
+                    "MLFLOW_REGISTERED_MODEL_NAME",
+                    "SteelEnergyRF",
+                )
             )
         else:
             mlflow.sklearn.log_model(

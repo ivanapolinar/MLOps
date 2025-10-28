@@ -1,28 +1,27 @@
-import os  # Manejo de rutas y verificación de archivos
-import json  # Lectura del archivo de métricas JSON
-import pandas as pd  # Construcción y lectura de DataFrames
-import numpy as np  # Generación de datos de ejemplo
+import os
+import json
+import pandas as pd
 
 # Importamos el módulo a probar
-from src.models import predict_model  # Funciones del script de predicción
+from src.models import predict_model
 
 # Componentes de sklearn para entrenar un pipeline simple para las pruebas
-from sklearn.preprocessing import StandardScaler, OneHotEncoder  # Preprocesamiento
-from sklearn.compose import ColumnTransformer  # Combina transformaciones por tipo
-from sklearn.pipeline import make_pipeline  # Crea el pipeline
-from sklearn.ensemble import RandomForestClassifier  # Modelo de clasificación
-import joblib  # Serialización del modelo entrenado
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import make_pipeline
+from sklearn.ensemble import RandomForestClassifier
+import joblib
 
 
 def _make_dummy_df():
     """Crea un DataFrame pequeño y reproducible para pruebas."""
     # Datos numéricos sencillos y una variable categórica
     df = pd.DataFrame({
-        'f1': [1, 2, 3, 4, 5, 6, 7, 8],  # Numérica
-        'f2': [2, 3, 3, 4, 2, 1, 2, 4],  # Numérica
-        'cat': ['A', 'B', 'A', 'B', 'A', 'B', 'A', 'B'],  # Categórica
-        'Load_Type': [0, 1, 1, 0, 1, 0, 1, 0],  # Objetivo binario
-        'date': pd.date_range('2022-01-01', periods=8, freq='D')  # Fecha
+        'f1': [1, 2, 3, 4, 5, 6, 7, 8],
+        'f2': [2, 3, 3, 4, 2, 1, 2, 4],
+        'cat': ['A', 'B', 'A', 'B', 'A', 'B', 'A', 'B'],
+        'Load_Type': [0, 1, 1, 0, 1, 0, 1, 0],
+        'date': pd.date_range('2022-01-01', periods=8, freq='D')
     })
     return df
 
@@ -74,7 +73,7 @@ def test_prepare_features_drops_target_and_date():
 
 
 def test_end_to_end_callback_creates_outputs(tmp_path):
-    """La función callback de Click debe generar predicciones y métricas/figuras."""
+    """La callback debe generar predicciones y métricas/figuras."""
     # Rutas temporales para modelo, entradas y salidas
     model_path = tmp_path / 'model.joblib'
     input_path = tmp_path / 'input.csv'
@@ -100,7 +99,9 @@ def test_end_to_end_callback_creates_outputs(tmp_path):
     assert os.path.exists(predictions_path)
     assert os.path.exists(metrics_path)
     # La figura sólo existe si hay etiquetas; en este caso sí
-    assert os.path.exists(os.path.join(str(figures_dir), 'confusion_matrix_predict.png'))
+    assert os.path.exists(
+        os.path.join(str(figures_dir), 'confusion_matrix_predict.png')
+    )
 
     # Validamos el contenido básico del CSV de predicciones
     preds_df = pd.read_csv(predictions_path)
@@ -112,4 +113,3 @@ def test_end_to_end_callback_creates_outputs(tmp_path):
     with open(metrics_path, 'r', encoding='utf-8') as f:
         metrics = json.load(f)
     assert 'accuracy' in metrics and 'report' in metrics
-

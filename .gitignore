@@ -90,7 +90,9 @@ mlruns/
 .mlflow_artifacts/
 
 # Reportes generados
-reports/figures/
+reports/figures/**
+# Mantener el directorio vacío con .gitkeep
+!reports/figures/.gitkeep
 reports/*.png
 reports/*.csv
 reports/*.json
@@ -107,3 +109,19 @@ reports/*.json
 
 # MLruns
 mlruns*
+
+__pycache__/
+.pytest_cache/
+*.py[cod]
+
+# Ensure .gitkeep is tracked in reports/figures
+!reports/figures/.gitkeep
+
+# Unignore structure to keep .gitkeep
+!reports/
+!reports/figures/
+!reports/figures/.gitkeep
+
+# Final precedence: ignore all in figures except .gitkeep
+reports/figures/**
+!reports/figures/.gitkeep
