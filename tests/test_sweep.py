@@ -11,13 +11,17 @@ def _make_dummy_df():
         'f2': [2, 3, 3, 4, 2, 1, 2, 4],
         'cat': ['A', 'B', 'A', 'B', 'A', 'B', 'A', 'B'],
         'Load_Type': [0, 1, 1, 0, 1, 0, 1, 0],
-        # La función de split descarta 'date', pero la incluimos por consistencia
+        # La función de split descarta 'date',
+        # pero la incluimos por consistencia
         'date': pd.date_range('2022-01-01', periods=8, freq='D')
     })
 
 
 def test_param_grid_default_keys():
-    """Verifica que el grid por defecto tiene las claves esperadas y sin 'random_state'."""
+    """
+    Verifica que el grid por defecto tiene
+    las claves esperadas y sin 'random_state'.
+    """
     grid = sweep.param_grid_default()
     # Claves esperadas (sin random_state)
     expected = {
@@ -42,7 +46,10 @@ def test_expand_grid_limit():
 
 
 def test_sweep_end_to_end(tmp_path, monkeypatch):
-    """Ejecuta el barrido con un grid mínimo y verifica artefactos de salida."""
+    """
+    Ejecuta el barrido con un grid mínimo
+    y verifica artefactos de salida.
+    """
     # Datos de entrada
     df = _make_dummy_df()
     input_csv = tmp_path / 'input.csv'
@@ -76,9 +83,9 @@ def test_sweep_end_to_end(tmp_path, monkeypatch):
 
     # Verificar que el modelo fue generado
     assert os.path.exists(model_out)
-    # Verificar archivos de importancia de variables generados por el mejor modelo
+    # Verificar archivos de importancia de
+    # variables generados por el mejor modelo
     fi_csv = figures_dir / 'feature_importances.csv'
     top_png = figures_dir / 'top_features.png'
     assert os.path.exists(fi_csv)
     assert os.path.exists(top_png)
-

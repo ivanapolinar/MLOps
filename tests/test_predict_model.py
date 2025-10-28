@@ -1,17 +1,24 @@
-import os  # Manejo de rutas y verificación de archivos
-import json  # Lectura del archivo de métricas JSON
-import pandas as pd  # Construcción y lectura de DataFrames
-import numpy as np  # Generación de datos de ejemplo
+# Manejo de rutas y verificación de archivos
+import os
+# Lectura del archivo de métricas JSON
+import json
+# Construcción y lectura de DataFrames
+import pandas as pd
 
 # Importamos el módulo a probar
 from src.models import predict_model  # Funciones del script de predicción
 
 # Componentes de sklearn para entrenar un pipeline simple para las pruebas
-from sklearn.preprocessing import StandardScaler, OneHotEncoder  # Preprocesamiento
-from sklearn.compose import ColumnTransformer  # Combina transformaciones por tipo
-from sklearn.pipeline import make_pipeline  # Crea el pipeline
-from sklearn.ensemble import RandomForestClassifier  # Modelo de clasificación
-import joblib  # Serialización del modelo entrenado
+# Preprocesamiento
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+# Combina transformaciones por tipo
+from sklearn.compose import ColumnTransformer
+# Crea el pipeline
+from sklearn.pipeline import make_pipeline
+# Modelo de clasificación
+from sklearn.ensemble import RandomForestClassifier
+# Serialización del modelo entrenado
+import joblib
 
 
 def _make_dummy_df():
@@ -74,7 +81,10 @@ def test_prepare_features_drops_target_and_date():
 
 
 def test_end_to_end_callback_creates_outputs(tmp_path):
-    """La función callback de Click debe generar predicciones y métricas/figuras."""
+    """
+    La función callback de Click debe
+    generar predicciones y métricas/figuras.
+    """
     # Rutas temporales para modelo, entradas y salidas
     model_path = tmp_path / 'model.joblib'
     input_path = tmp_path / 'input.csv'
@@ -100,7 +110,9 @@ def test_end_to_end_callback_creates_outputs(tmp_path):
     assert os.path.exists(predictions_path)
     assert os.path.exists(metrics_path)
     # La figura sólo existe si hay etiquetas; en este caso sí
-    assert os.path.exists(os.path.join(str(figures_dir), 'confusion_matrix_predict.png'))
+    assert os.path.exists(
+        os.path.join(str(figures_dir), 'confusion_matrix_predict.png')
+    )
 
     # Validamos el contenido básico del CSV de predicciones
     preds_df = pd.read_csv(predictions_path)
@@ -112,4 +124,3 @@ def test_end_to_end_callback_creates_outputs(tmp_path):
     with open(metrics_path, 'r', encoding='utf-8') as f:
         metrics = json.load(f)
     assert 'accuracy' in metrics and 'report' in metrics
-

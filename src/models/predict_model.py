@@ -1,12 +1,18 @@
-import json  # Maneja serialización de métricas a JSON
-import os  # Operaciones de sistema de archivos (rutas y creación de carpetas)
-from typing import Optional  # Tipado para argumentos opcionales
+# Maneja serialización de métricas a JSON
+import json
+# Operaciones de sistema de archivos (rutas y creación de carpetas)
+import os
+# Tipado para argumentos opcionales
+from typing import Optional
 
 import click  # Construcción de CLI
 import joblib  # Carga de modelos serializados
-import numpy as np  # Operaciones numéricas (referenciado por tipado/funciones)
 import pandas as pd  # Manipulación de datos tabulares
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix  # Métricas
+from sklearn.metrics import (
+    accuracy_score,
+    classification_report,
+    confusion_matrix
+)  # Métricas
 import matplotlib.pyplot as plt  # Graficación
 import seaborn as sns  # Estética de gráficos
 
@@ -14,26 +20,44 @@ import seaborn as sns  # Estética de gráficos
 def load_dataset(path: str) -> pd.DataFrame:
     # Lee el CSV desde la ruta indicada a un DataFrame
     df = pd.read_csv(path)
-    # Si existe una columna 'date', intenta convertirla a datetime (sin fallar si hay errores)
+    # Si existe una columna 'date', intenta convertirla
+    # a datetime (sin fallar si hay errores)
     if 'date' in df.columns:
         df['date'] = pd.to_datetime(df['date'], errors='coerce')
     # Devuelve el DataFrame cargado (con 'date' parseado si aplica)
     return df
 
 
-def prepare_features(df: pd.DataFrame, target: str = 'Load_Type') -> pd.DataFrame:
-    # Elimina del DataFrame las columnas objetivo y de fecha si existen
-    # El modelo entrenado incluye el preprocesamiento, así que sólo pasamos features
-    return df.drop(columns=[c for c in [target, 'date'] if c in df.columns], errors='ignore')
+def prepare_features(
+        df: pd.DataFrame,
+        target: str = 'Load_Type'
+) -> pd.DataFrame:
+    # Elimina del DataFrame las columnas objetivo y
+    # de fecha si existen. El modelo entrenado incluye
+    # el preprocesamiento, así que sólo pasamos features
+    return df.drop(
+        columns=[c for c in [target, 'date'] if c in df.columns],
+        errors='ignore'
+    )
 
 
-def save_confusion_matrix(y_true, y_pred, figures_dir: str, name: str = 'predict') -> str:
+def save_confusion_matrix(
+        y_true,
+        y_pred,
+        figures_dir: str,
+        name: str = 'predict'
+) -> str:
     # Asegura que exista la carpeta de figuras
     os.makedirs(figures_dir, exist_ok=True)
     # Crea una nueva figura con tamaño específico
     plt.figure(figsize=(6, 4))
     # Dibuja un mapa de calor con la matriz de confusión
-    sns.heatmap(confusion_matrix(y_true, y_pred), annot=True, fmt='d', cmap='Blues')
+    sns.heatmap(
+        confusion_matrix(y_true, y_pred),
+        annot=True,
+        fmt='d',
+        cmap='Blues'
+    )
     # Título y ejes descriptivos
     plt.title(f"Matriz de confusión ({name})")
     plt.xlabel("Predicción")
@@ -51,11 +75,16 @@ def save_confusion_matrix(y_true, y_pred, figures_dir: str, name: str = 'predict
 
 
 @click.command()
-@click.argument('input_path', type=click.Path(exists=True))  # CSV de entrada a puntuar
-@click.argument('model_path', type=click.Path(exists=True))  # Modelo .joblib entrenado
-@click.argument('predictions_path', type=click.Path())  # Salida CSV de predicciones
-@click.argument('metrics_path', required=False, default=None)  # Salida JSON de métricas (opcional)
-@click.argument('figures_dir', required=False, default=None)  # Carpeta para figuras (opcional)
+# CSV de entrada a puntuar
+@click.argument('input_path', type=click.Path(exists=True))
+# Modelo .joblib entrenado
+@click.argument('model_path', type=click.Path(exists=True))
+# Salida CSV de predicciones
+@click.argument('predictions_path', type=click.Path())
+# Salida JSON de métricas (opcional)
+@click.argument('metrics_path', required=False, default=None)
+# Carpeta para figuras (opcional)
+@click.argument('figures_dir', required=False, default=None)
 def main(input_path: str,
          model_path: str,
          predictions_path: str,
@@ -67,7 +96,7 @@ def main(input_path: str,
     - model_path: Ruta al .joblib entrenado (pipeline sklearn).
     - predictions_path: CSV con columna Prediction y probabilidades si existen.
     - metrics_path: (opcional) JSON con métricas si el CSV trae Load_Type.
-    - figures_dir: (opcional) carpeta para la matriz de confusión si hay etiquetas.
+    - figures_dir:(opcional) carpeta para matriz de confusión si hay etiquetas.
     """
 
     # Asegura carpeta de salida para predicciones
