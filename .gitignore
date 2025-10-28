@@ -91,6 +91,8 @@ mlruns/
 
 # Reportes generados
 reports/figures/
+# Mantener el directorio vacío con .gitkeep
+!reports/figures/.gitkeep
 reports/*.png
 reports/*.csv
 reports/*.json
@@ -107,3 +109,10 @@ reports/*.json
 
 # MLruns
 mlruns*
+
+__pycache__/
+.pytest_cache/
+*.py[cod]
+
+# Ensure .gitkeep is tracked in reports/figures
+!reports/figures/.gitkeep
