@@ -127,7 +127,11 @@ def main(input_path: str, model_out: str, figures_dir: str):
 
         # Registro de modelo en MLflow Model Registry (opcional)
         try:
-            example = X_test[:2]
+            # Evitar warning de esquema de MLflow con columnas enteras sin NAs
+            example = X_test[:2].copy()
+            int_cols = list(example.select_dtypes(include="integer").columns)
+            if int_cols:
+                example[int_cols] = example[int_cols].astype("float64")
             register_flag = os.getenv("MLFLOW_REGISTER_IN_REGISTRY", "false").lower() == "true"
             tracking_uri = mlflow.get_tracking_uri() or ""
             if register_flag and tracking_uri.startswith("http"):
