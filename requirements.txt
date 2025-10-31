@@ -17,3 +17,6 @@ seaborn
 joblib
 scikit-learn
 setuptools
+pydantic
+requests
+fastapi
