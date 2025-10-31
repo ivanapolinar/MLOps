@@ -14,6 +14,6 @@ ct = model.named_steps['columntransformer']
 fields = ct.get_feature_names_out()
 
 
-# Imprime todos los fields
+# Print all fields
 for field in fields:
     print(field)
