@@ -173,7 +173,7 @@ endif
 test_environment:
 	$(PYTHON_INTERPRETER) test_environment.py
 
-## Levanta la API
+## Start the API
 serve-api:
 	uvicorn src.api.main:app --reload --port 8000
 
