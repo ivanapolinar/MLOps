@@ -4,8 +4,10 @@ from typing import List, Optional
 import joblib
 import pandas as pd
 import logging
+import os
 
-MODEL_PATH = "models/best_rf_model.joblib"
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "models", "best_rf_model.joblib")
+MODEL_PATH = os.path.abspath(MODEL_PATH)
 MODEL_VERSION = "1.0.0"
 
 logging.basicConfig(level=logging.INFO)
@@ -63,6 +65,7 @@ def predict(request: PredictRequest):
         probabilities = model.predict_proba(df)[0].tolist() if hasattr(model, "predict_proba") else None
         return PredictResponse(prediction=str(prediction), probabilities=probabilities)
     except Exception as e:
+        print(f"Prediction error: {e}")
         logger.error(f"Prediction error: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -80,6 +83,7 @@ def batch_predict(request: BatchPredictRequest):
         ]
         return result
     except Exception as e:
+        print(f"Prediction error: {e}")
         logger.error(f"Batch prediction error: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
