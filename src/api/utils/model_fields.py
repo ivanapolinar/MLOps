@@ -10,7 +10,7 @@ model = joblib.load(MODEL_PATH)
 # El nombre puede variar, pero suele ser 'columntransformer'
 ct = model.named_steps['columntransformer']
 
-# Obtén los nombres de los features que espera el modelo
+# Get the feature names expected by the model
 fields = ct.get_feature_names_out()
 
 
