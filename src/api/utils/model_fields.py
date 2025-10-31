@@ -3,7 +3,7 @@ import joblib
 # Ruta a tu modelo .joblib
 MODEL_PATH = "../../../models/best_rf_model.joblib"
 
-# Carga el modelo
+# Load the model
 model = joblib.load(MODEL_PATH)
 
 # Accede al ColumnTransformer dentro del pipeline
