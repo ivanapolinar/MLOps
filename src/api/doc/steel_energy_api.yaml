@@ -1,0 +1,236 @@
+openapi: 3.0.3
+info:
+  title: Steel Energy ML API
+  description: API for steel energy RandomForest ML model
+  version: "1.0.0"
+servers:
+  - url: http://localhost:8000
+paths:
+  /health:
+    get:
+      summary: Healthcheck endpoint
+      responses:
+        '200':
+          description: Health status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  model_loaded:
+                    type: boolean
+                    example: true
+
+  /version:
+    get:
+      summary: Get model version
+      responses:
+        '200':
+          description: Model version and path
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  version:
+                    type: string
+                    example: "1.0.0"
+                  model_path:
+                    type: string
+                    example: "models/best_rf_model.joblib"
+
+  /predict:
+    post:
+      summary: Single prediction endpoint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PredictRequest'
+      responses:
+        '200':
+          description: Prediction result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PredictResponse'
+        '400':
+          description: Prediction error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+        '500':
+          description: Model not loaded error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+
+  /batch_predict:
+    post:
+      summary: Batch prediction endpoint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchPredictRequest'
+      responses:
+        '200':
+          description: Batch prediction results (array of predictions)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PredictResponse'
+        '400':
+          description: Batch prediction error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+        '500':
+          description: Model not loaded error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+
+  /metrics:
+    get:
+      summary: Dummy metrics endpoint
+      responses:
+        '200':
+          description: Metrics info
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  metrics:
+                    type: object
+                    additionalProperties: true
+
+  /retrain:
+    post:
+      summary: Dummy retrain endpoint
+      responses:
+        '200':
+          description: Retrain status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: not implemented
+
+  /:
+    get:
+      summary: Welcome endpoint
+      responses:
+        '200':
+          description: Welcome message
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Welcome to the Steel Energy ML API!
+
+components:
+  schemas:
+    PredictRequest:
+      type: object
+      properties:
+        Usage_kWh:
+          type: number
+          example: 200.0
+        Lagging_Current_Reactive_Power_kVarh:
+          type: number
+          example: 12.1
+        Leading_Current_Reactive_Power_kVarh:
+          type: number
+          example: 0.0
+        CO2_tCO2:
+          type: number
+          example: 0.07
+          description: Alias of CO2(tCO2)
+        Lagging_Current_Power_Factor:
+          type: number
+          example: 0.85
+        Leading_Current_Power_Factor:
+          type: number
+          example: 0.0
+        NSM:
+          type: number
+          example: 36000
+        mixed_type_col:
+          type: number
+          example: 0.0
+        WeekStatus:
+          type: string
+          example: WEEKDAY
+        Day_of_week:
+          type: string
+          example: MONDAY
+        Lagging_Current_Reactive.Power_kVarh:
+          type: number
+          example: 12.1
+        CO2(tCO2):
+          type: number
+          example: 0.07
+      required:
+        - Usage_kWh
+        - Lagging_Current_Reactive.Power_kVarh
+        - Leading_Current_Reactive_Power_kVarh
+        - CO2(tCO2)
+        - Lagging_Current_Power_Factor
+        - Leading_Current_Power_Factor
+        - NSM
+        - mixed_type_col
+        - WeekStatus
+        - Day_of_week
+
+    BatchPredictRequest:
+      type: object
+      properties:
+        records:
+          type: array
+          items:
+            $ref: '#/components/schemas/PredictRequest'
+      required:
+        - records
+
+    PredictResponse:
+      type: object
+      properties:
+        prediction:
+          type: string
+          example: MEDIUM_LOAD
+        probabilities:
+          type: array
+          items:
+            type: number
+          example: [0.2, 0.7, 0.1]
