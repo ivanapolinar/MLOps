@@ -13,6 +13,7 @@ ct = model.named_steps['columntransformer']
 # Obtén los nombres de los features que espera el modelo
 fields = ct.get_feature_names_out()
 
+
 # Imprime todos los fields
 for field in fields:
     print(field)

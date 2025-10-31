@@ -3,11 +3,13 @@ import json
 
 BASE_URL = "http://localhost:8000"
 
+
 def pretty_print(response):
     try:
         print(json.dumps(response.json(), indent=4, ensure_ascii=False))
     except Exception as e:
         print("Error al decodificar respuesta:", e, response.text)
+
 
 def test_health():
     print("Probando /health...")
@@ -15,11 +17,13 @@ def test_health():
     print("Status:", r.status_code)
     pretty_print(r)
 
+
 def test_version():
     print("\nProbando /version...")
     r = requests.get(f"{BASE_URL}/version")
     print("Status:", r.status_code)
     pretty_print(r)
+
 
 def test_predict():
     print("\nProbando /predict (predicción individual)...")
@@ -38,6 +42,7 @@ def test_predict():
     r = requests.post(f"{BASE_URL}/predict", json=data)
     print("Status:", r.status_code)
     pretty_print(r)
+
 
 def test_batch_predict():
     print("\nProbando /batch_predict (predicción por lote)...")
@@ -73,17 +78,20 @@ def test_batch_predict():
     print("Status:", r.status_code)
     pretty_print(r)
 
+
 def test_metrics():
     print("\nProbando /metrics...")
     r = requests.get(f"{BASE_URL}/metrics")
     print("Status:", r.status_code)
     pretty_print(r)
 
+
 def test_retrain():
     print("\nProbando /retrain (dummy)...")
     r = requests.post(f"{BASE_URL}/retrain")
     print("Status:", r.status_code)
     pretty_print(r)
+
 
 if __name__ == "__main__":
     print("Iniciando pruebas de la API Steel Energy...\n")

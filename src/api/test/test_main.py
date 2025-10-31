@@ -47,11 +47,13 @@ batch_payload = {
     ]
 }
 
+
 def test_health():
     resp = client.get("/health")
     assert resp.status_code == 200
     assert "status" in resp.json()
     assert "model_loaded" in resp.json()
+
 
 def test_version():
     resp = client.get("/version")
@@ -60,12 +62,14 @@ def test_version():
     assert "version" in body
     assert "model_path" in body
 
+
 def test_predict_valid():
     resp = client.post("/predict", json=valid_payload)
     if resp.status_code != 200:
         print("Status:", resp.status_code)
         print("Response:", resp.text)
     assert resp.status_code == 200
+
 
 def test_batch_predict_valid():
     resp = client.post("/batch_predict", json=batch_payload)
@@ -74,11 +78,13 @@ def test_batch_predict_valid():
         print("Response:", resp.text)
     assert resp.status_code == 200
 
+
 def test_metrics():
     resp = client.get("/metrics")
     assert resp.status_code == 200
     body = resp.json()
     assert "metrics" in body
+
 
 def test_retrain():
     resp = client.post("/retrain")
