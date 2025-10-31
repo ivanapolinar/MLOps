@@ -19,6 +19,7 @@ MODEL_VERSION = "1.0.0"
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("steel_energy_api")
 
+
 try:
     model = joblib.load(MODEL_PATH)
     logger.info(f"Model loaded from {MODEL_PATH}")
@@ -26,11 +27,13 @@ except Exception as e:
     model = None
     logger.error(f"Could not load model: {e}")
 
+
 app = FastAPI(
     title="Steel Energy ML API",
     description="API for steel energy RandomForest ML model",
     version=MODEL_VERSION,
 )
+
 
 class PredictRequest(BaseModel):
     Usage_kWh: float
@@ -47,25 +50,31 @@ class PredictRequest(BaseModel):
     WeekStatus: str
     Day_of_week: str
 
+
 class BatchPredictRequest(BaseModel):
     records: List[PredictRequest]
+
 
 class ClassProbability(BaseModel):
     class_name: str
     probability: float
 
+
 class PredictResponse(BaseModel):
     prediction: str
     class_probabilities: List[ClassProbability]
+
 
 @app.get("/health")
 def health():
     status = "ok" if model is not None else "error"
     return {"status": status, "model_loaded": model is not None}
 
+
 @app.get("/version")
 def version():
     return {"version": MODEL_VERSION}
+
 
 @app.post("/predict", response_model=PredictResponse)
 def predict(request: PredictRequest):
@@ -91,6 +100,7 @@ def predict(request: PredictRequest):
         print(f"Prediction error: {e}")
         logger.error(f"Prediction error: {e}")
         raise HTTPException(status_code=400, detail=str(e))
+
 
 @app.post("/batch_predict", response_model=List[PredictResponse])
 def batch_predict(request: BatchPredictRequest):
@@ -119,6 +129,7 @@ def batch_predict(request: BatchPredictRequest):
         logger.error(f"Batch prediction error: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
+
 @app.get("/metrics")
 def metrics():
     return {"metrics": {
@@ -126,13 +137,16 @@ def metrics():
         "accuracy": "not implemented",
     }}
 
+
 @app.get("/classes")
 def get_classes():
     return {"classes": list(model.classes_)}
 
+
 @app.post("/retrain")
 def retrain():
     return {"status": "not implemented"}
+
 
 @app.get("/")
 def root():

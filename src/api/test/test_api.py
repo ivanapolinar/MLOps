@@ -92,6 +92,7 @@ def test_retrain():
     print("Status:", r.status_code)
     pretty_print(r)
 
+
 def test_classes():
     print("\nProbando /classes (dummy)...")
     r = requests.get(f"{BASE_URL}/classes")
