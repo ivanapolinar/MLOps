@@ -29,7 +29,7 @@ paths:
       summary: Get model version
       responses:
         '200':
-          description: Model version and path
+          description: Model version info
           content:
             application/json:
               schema:
@@ -38,9 +38,6 @@ paths:
                   version:
                     type: string
                     example: "1.0.0"
-                  model_path:
-                    type: string
-                    example: "models/best_rf_model.joblib"
 
   /predict:
     post:
@@ -129,6 +126,23 @@ paths:
                     type: object
                     additionalProperties: true
 
+  /classes:
+    get:
+      summary: Get model class names (order matches probabilities)
+      responses:
+        '200':
+          description: Ordered list of class names as used by the model
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  classes:
+                    type: array
+                    items:
+                      type: string
+                    example: ["LIGHT_LOAD", "MAXIMUM_LOAD", "MEDIUM_LOAD"]
+
   /retrain:
     post:
       summary: Dummy retrain endpoint
@@ -167,16 +181,15 @@ components:
         Usage_kWh:
           type: number
           example: 200.0
-        Lagging_Current_Reactive_Power_kVarh:
+        Lagging_Current_Reactive.Power_kVarh:
           type: number
           example: 12.1
         Leading_Current_Reactive_Power_kVarh:
           type: number
           example: 0.0
-        CO2_tCO2:
+        CO2(tCO2):
           type: number
           example: 0.07
-          description: Alias of CO2(tCO2)
         Lagging_Current_Power_Factor:
           type: number
           example: 0.85
@@ -195,12 +208,6 @@ components:
         Day_of_week:
           type: string
           example: MONDAY
-        Lagging_Current_Reactive.Power_kVarh:
-          type: number
-          example: 12.1
-        CO2(tCO2):
-          type: number
-          example: 0.07
       required:
         - Usage_kWh
         - Lagging_Current_Reactive.Power_kVarh
@@ -223,14 +230,23 @@ components:
       required:
         - records
 
+    ClassProbability:
+      type: object
+      properties:
+        class_name:
+          type: string
+          example: MEDIUM_LOAD
+        probability:
+          type: number
+          example: 0.4933
+
     PredictResponse:
       type: object
       properties:
         prediction:
           type: string
           example: MEDIUM_LOAD
-        probabilities:
+        class_probabilities:
           type: array
           items:
-            type: number
-          example: [0.2, 0.7, 0.1]
+            $ref: '#/components/schemas/ClassProbability'
