@@ -1,80 +1,71 @@
 """
-Módulo para la clase Dataset: maneja carga, filtrado, división y guardado de datos.
+Clase Dataset para cargar, procesar, filtrar y dividir conjuntos de datos.
 """
 
-import os
 import pandas as pd
 from sklearn.model_selection import train_test_split
+import os
 
 
 class Dataset:
-    """
-    Clase para manejar operaciones básicas de datasets: carga, filtrado, división y guardado.
-    """
+    """Maneja la carga, procesamiento y división de datos."""
 
     def __init__(self, path: str, target_column: str):
         """
-        Inicializa la clase Dataset.
+        Inicializa un objeto Dataset con la ruta del archivo y el nombre
+        de la columna objetivo.
 
         Args:
-            path (str): Ruta del archivo CSV.
-            target_column (str): Nombre de la columna objetivo (target).
+            path (str): Ruta al archivo CSV.
+            target_column (str): Nombre de la columna objetivo.
         """
         self.path = path
         self.target_column = target_column
         self.data = None
 
     def load_data(self) -> pd.DataFrame:
-        """
-        Carga el dataset desde un archivo CSV.
-
-        Returns:
-            pd.DataFrame: DataFrame con los datos cargados.
-        """
+        """Carga los datos desde el archivo CSV especificado."""
         if not os.path.exists(self.path):
-            raise FileNotFoundError(f"No se encontró el archivo: {self.path}")
+            raise FileNotFoundError(f"Archivo no encontrado: {self.path}")
         self.data = pd.read_csv(self.path)
         return self.data
 
     def filter_columns(self, df: pd.DataFrame, columns: list) -> pd.DataFrame:
         """
-        Filtra el DataFrame para incluir solo las columnas especificadas.
+        Retorna un DataFrame solo con las columnas indicadas.
 
         Args:
             df (pd.DataFrame): DataFrame original.
-            columns (list): Lista de columnas a mantener.
-
-        Returns:
-            pd.DataFrame: DataFrame filtrado.
+            columns (list): Lista de columnas a conservar.
         """
-        return df[columns]
+        return df[columns].copy()
 
     def split_data(
-            self,
-            df: pd.DataFrame,
-            test_size: float = 0.2,
-            random_state: int = 42):
+        self,
+        df: pd.DataFrame,
+        test_size: float = 0.2,
+        random_state: int = 42
+    ):
         """
-        Divide el dataset en conjuntos de entrenamiento y prueba.
+        Divide los datos en conjuntos de entrenamiento y prueba.
 
         Args:
-            df (pd.DataFrame): DataFrame original.
-            test_size (float): Proporción del conjunto de prueba.
-            random_state (int): Semilla para la aleatoriedad.
-
-        Returns:
-            tuple: (train_df, test_df)
+            df (pd.DataFrame): DataFrame a dividir.
+            test_size (float): Proporción para el conjunto de prueba.
+            random_state (int): Semilla para reproducibilidad.
         """
         train_df, test_df = train_test_split(
-            df, test_size=test_size, random_state=random_state)
+            df, test_size=test_size, random_state=random_state
+        )
         return train_df, test_df
 
     def save_data(self, df: pd.DataFrame, output_path: str):
         """
-        Guarda el DataFrame en un archivo CSV.
+        Guarda el DataFrame en formato CSV.
 
         Args:
             df (pd.DataFrame): DataFrame a guardar.
-            output_path (str): Ruta de salida del archivo CSV.
+            output_path (str): Ruta donde se guardará el archivo.
         """
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
         df.to_csv(output_path, index=False)
