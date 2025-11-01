@@ -1,12 +1,12 @@
 """
 Pruebas unitarias para el módulo make_dataset.py.
-Estas pruebas validan la correcta ejecución de las funciones principales de limpieza,
-imputación y guardado de datos definidas en src/data/make_dataset.py.
+Estas pruebas validan la correcta ejecución de las funciones principales
+de limpieza, imputación y guardado de datos definidas en
+src/data/make_dataset.py.
 """
 
 import os
 import pandas as pd
-import numpy as np
 import pytest
 from src.data import make_dataset
 
@@ -36,8 +36,11 @@ def test_load_data(tmp_path):
 
 
 def test_clean_data(sample_dataframe):
-    """Valida que clean_data identifique columnas por tipo y las limpie correctamente."""
-    cleaned_df, num_cols, object_cols, date_cols = make_dataset.clean_data(sample_dataframe.copy())
+    """Valida que clean_data identifique columnas por tipo y las
+    limpie correctamente."""
+    cleaned_df, num_cols, object_cols, date_cols = make_dataset.clean_data(
+        sample_dataframe.copy()
+    )
 
     # Verificaciones básicas
     assert isinstance(cleaned_df, pd.DataFrame)
@@ -49,8 +52,12 @@ def test_clean_data(sample_dataframe):
 
 def test_impute_data(sample_dataframe):
     """Prueba que impute_data complete valores nulos correctamente."""
-    df_cleaned, num_cols, object_cols, date_cols = make_dataset.clean_data(sample_dataframe.copy())
-    df_imputed = make_dataset.impute_data(df_cleaned, num_cols, object_cols, date_cols)
+    df_cleaned, num_cols, object_cols, date_cols = make_dataset.clean_data(
+        sample_dataframe.copy()
+    )
+    df_imputed = make_dataset.impute_data(
+        df_cleaned, num_cols, object_cols, date_cols
+    )
 
     # Validar que las fechas nulas fueron completadas
     assert df_imputed["date"].isna().sum() == 0
@@ -61,9 +68,15 @@ def test_impute_data(sample_dataframe):
 
 def test_drop_null_targets(sample_dataframe):
     """Confirma que drop_null_targets elimina filas con target nulo."""
-    df_cleaned, num_cols, object_cols, date_cols = make_dataset.clean_data(sample_dataframe.copy())
-    df_imputed = make_dataset.impute_data(df_cleaned, num_cols, object_cols, date_cols)
-    df_result = make_dataset.drop_null_targets(df_imputed, target_col="Load_Type")
+    df_cleaned, num_cols, object_cols, date_cols = make_dataset.clean_data(
+        sample_dataframe.copy()
+    )
+    df_imputed = make_dataset.impute_data(
+        df_cleaned, num_cols, object_cols, date_cols
+    )
+    df_result = make_dataset.drop_null_targets(
+        df_imputed, target_col="Load_Type"
+    )
 
     # Ninguna fila debe tener el target nulo
     assert df_result["Load_Type"].isna().sum() == 0
