@@ -158,7 +158,8 @@ def impute_data(df, num_cols, object_cols, date_cols):
     # Imputar fechas con base en la anterior
     for i in range(1, len(df)):
         if pd.isna(df.loc[i, 'date']):
-            df.loc[i, 'date'] = df.loc[i - 1, 'date'] + pd.Timedelta(minutes=15)
+            df.loc[i, 'date'] = df.loc[i - 1, 'date'] + \
+                pd.Timedelta(minutes=15)
 
     # Convertir columnas numéricas a float
     df[num_cols] = df[num_cols].apply(pd.to_numeric, errors='coerce')

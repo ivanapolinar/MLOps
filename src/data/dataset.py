@@ -49,7 +49,11 @@ class Dataset:
         """
         return df[columns]
 
-    def split_data(self, df: pd.DataFrame, test_size: float = 0.2, random_state: int = 42):
+    def split_data(
+            self,
+            df: pd.DataFrame,
+            test_size: float = 0.2,
+            random_state: int = 42):
         """
         Divide el dataset en conjuntos de entrenamiento y prueba.
 
@@ -61,7 +65,8 @@ class Dataset:
         Returns:
             tuple: (train_df, test_df)
         """
-        train_df, test_df = train_test_split(df, test_size=test_size, random_state=random_state)
+        train_df, test_df = train_test_split(
+            df, test_size=test_size, random_state=random_state)
         return train_df, test_df
 
     def save_data(self, df: pd.DataFrame, output_path: str):
