@@ -93,6 +93,13 @@ def test_retrain():
     pretty_print(r)
 
 
+def test_classes():
+    print("\nProbando /classes (dummy)...")
+    r = requests.get(f"{BASE_URL}/classes")
+    print("Status:", r.status_code)
+    pretty_print(r)
+
+
 if __name__ == "__main__":
     print("Iniciando pruebas de la API Steel Energy...\n")
     test_health()

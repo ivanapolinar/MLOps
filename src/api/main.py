@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List
 import joblib
 import pandas as pd
 import logging
@@ -18,6 +18,7 @@ MODEL_VERSION = "1.0.0"
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("steel_energy_api")
+
 
 try:
     model = joblib.load(MODEL_PATH)
@@ -54,9 +55,14 @@ class BatchPredictRequest(BaseModel):
     records: List[PredictRequest]
 
 
+class ClassProbability(BaseModel):
+    class_name: str
+    probability: float
+
+
 class PredictResponse(BaseModel):
     prediction: str
-    probabilities: Optional[List[float]]
+    class_probabilities: List[ClassProbability]
 
 
 @app.get("/health")
@@ -81,9 +87,14 @@ def predict(request: PredictRequest):
         probabilities = model.predict_proba(df)[0].tolist() \
             if hasattr(model, "predict_proba") \
             else None
+        classes = list(model.classes_)
+        class_probs = [
+            ClassProbability(class_name=c, probability=p)
+            for c, p in zip(classes, probabilities)
+        ]
         return PredictResponse(
             prediction=str(prediction),
-            probabilities=probabilities
+            class_probabilities=class_probs
         )
     except Exception as e:
         print(f"Prediction error: {e}")
@@ -101,8 +112,15 @@ def batch_predict(request: BatchPredictRequest):
         probabilities = model.predict_proba(df).tolist() \
             if hasattr(model, "predict_proba") \
             else [None] * len(predictions)
+        classes = list(model.classes_)
         result = [
-            PredictResponse(prediction=str(pred), probabilities=prob)
+            PredictResponse(
+                prediction=str(pred),
+                class_probabilities=[
+                    ClassProbability(class_name=c, probability=p)
+                    for c, p in zip(classes, prob)
+                ]
+            )
             for pred, prob in zip(predictions, probabilities)
         ]
         return result
@@ -118,6 +136,11 @@ def metrics():
         "requests": "not implemented",
         "accuracy": "not implemented",
     }}
+
+
+@app.get("/classes")
+def get_classes():
+    return {"classes": list(model.classes_)}
 
 
 @app.post("/retrain")
