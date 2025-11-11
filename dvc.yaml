@@ -1,0 +1,34 @@
+# Pipeline DVC del proyecto
+# - preprocess: Limpia y formatea datos crudos -> datos limpios
+# - train: Entrena el modelo y guarda artefactos/figuras
+# - predict: Usa el modelo entrenado para puntuar un CSV y generar artefactos
+stages:
+  preprocess:
+    # Genera data/clean/steel_energy_clean.csv a partir del CSV crudo
+    cmd: python src/data/make_dataset.py data/raw/steel_energy_modified.csv data/clean/steel_energy_clean.csv
+    deps:
+      - src/data/make_dataset.py
+      - data/raw/steel_energy_modified.csv
+    outs:
+      - data/clean/steel_energy_clean.csv
+
+  train:
+    # Entrena modelo RandomForest con MLflow, guarda figuras en reports/figures
+    cmd: python src/models/train_model.py data/clean/steel_energy_clean.csv models/best_rf_model.joblib reports/figures
+    deps:
+      - src/models/train_model.py
+      - data/clean/steel_energy_clean.csv
+    outs:
+      - models/best_rf_model.joblib
+      - reports/figures
+
+  predict:
+    # Infiere con el modelo entrenado; guarda predicciones y métricas
+    cmd: python src/models/predict_model.py data/clean/steel_energy_clean.csv models/best_rf_model.joblib reports/predictions.csv reports/metrics.json reports/figures
+    deps:
+      - src/models/predict_model.py
+      - models/best_rf_model.joblib
+      - data/clean/steel_energy_clean.csv
+    outs:
+      - reports/predictions.csv
+      - reports/metrics.json
