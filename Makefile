@@ -160,6 +160,10 @@ pipeline-deploy: requirements
 		 && { git ls-files --error-unmatch reports/predictions.csv >/dev/null 2>&1 && git rm --cached reports/predictions.csv || true; } \
 		 && { git ls-files --error-unmatch reports/metrics.json >/dev/null 2>&1 && git rm --cached reports/metrics.json || true; } \
 		 && { git ls-files --error-unmatch data/clean/steel_energy_clean.csv >/dev/null 2>&1 && git rm --cached data/clean/steel_energy_clean.csv || true; } || true
+		@echo ">>> Asegurando que datasets bajo data/ no estén en Git (untrack si aplica)"
+		@{ git ls-files --error-unmatch data/raw/steel_energy_modified.csv >/dev/null 2>&1 && git rm --cached data/raw/steel_energy_modified.csv || true; } \
+		 && { git ls-files --error-unmatch data/raw/steel_energy_original.csv >/dev/null 2>&1 && git rm --cached data/raw/steel_energy_original.csv || true; } \
+		 && { git ls-files --error-unmatch data/interim/steel_energy_modified.csv >/dev/null 2>&1 && git rm --cached data/interim/steel_energy_modified.csv || true; } || true
 		@echo ">>> Añadiendo datasets base a DVC (.dvc en data/raw/ y opcional en data/interim/)"
 		@dvc add data/raw/steel_energy_modified.csv || true
 		@dvc add data/raw/steel_energy_original.csv || true
