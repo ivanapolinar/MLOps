@@ -19,6 +19,13 @@ Comandos Rápidos
   - Sube cambios a Git: `git add/commit/push` (usa `msg` si se indica,
     o un mensaje por defecto si no).
 
+- `make prepare-update`
+  - Prepara tu entorno local antes de trabajar: hace `git pull --ff-only`
+    (o usa `NO_PULL=true` para omitir), `dvc pull` limitado (solo .dvc de datos
+    y modelo si existe `dvc.lock`) y ejecuta `pipeline-class` para validar que
+    todo corre correctamente con lo último del remoto. Restaura tus cambios
+    locales (stash) al finalizar. No versiona ni sube artefactos.
+
 Notas
 - Para registrar en el Model Registry de MLflow, exporta variables de entorno:
   `MLFLOW_TRACKING_URI`, `MLFLOW_EXPERIMENT`, `MLFLOW_REGISTER_IN_REGISTRY=true`
