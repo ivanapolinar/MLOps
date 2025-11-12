@@ -147,6 +147,7 @@ pipeline-deploy: requirements
 		dvc pull data/raw/steel_energy_modified.csv.dvc data/raw/steel_energy_original.csv.dvc 2>/dev/null || true; \
 		dvc pull data/interim/steel_energy_modified.csv.dvc 2>/dev/null || true; \
 		dvc pull models/final_model.joblib.dvc 2>/dev/null || true; \
+		dvc pull data/processed/steel_energy_clean.csv.dvc 2>/dev/null || true; \
 	else \
 		echo ">>> dvc.lock no existe o NO_PULL=true: omitiendo dvc pull"; \
 	fi
@@ -168,6 +169,10 @@ pipeline-deploy: requirements
 		@dvc add data/raw/steel_energy_modified.csv || true
 		@dvc add data/raw/steel_energy_original.csv || true
 		@dvc add data/interim/steel_energy_modified.csv || true
+		@echo ">>> Publicando dataset limpio como artefacto DVC independiente (data/processed/steel_energy_clean.csv)"
+		@mkdir -p data/processed
+		@cp -f data/clean/steel_energy_clean.csv data/processed/steel_energy_clean.csv || true
+		@dvc add data/processed/steel_energy_clean.csv || true
 		@echo ">>> dvc push (requiere credenciales válidas si es S3)"
 		@dvc push || { echo "✖ dvc push falló"; exit 1; }
 		@echo ">>> Preparando commit en Git (dvc.lock, .dvc y cambios)"
