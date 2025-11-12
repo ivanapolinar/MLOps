@@ -79,8 +79,13 @@ target/
 # Jupyter NB Checkpoints
 .ipynb_checkpoints/
 
-# Excluir artefactos generados y mantener solo metadatos (.dvc)
+# Excluir datasets versionados con DVC y mantener solo metadatos (.dvc)
+# Ignora todo bajo data/, pero permite .dvc y .gitkeep
+data/**
+!data/
+!data/**/
 !data/**/*.dvc
+!data/**/.gitkeep
 
 # Modelos entrenados (versionados con DVC, no con Git)
 models/*.joblib
@@ -88,6 +93,10 @@ models/*.joblib
 # MLflow (runs y artefactos locales)
 mlruns/
 .mlflow_artifacts/
+
+# Archivos temporales del servidor de API (lanzado por Makefile)
+.api_server.log
+.api_server.pid
 
 # Reportes generados
 reports/figures/**

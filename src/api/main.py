@@ -6,14 +6,17 @@ import pandas as pd
 import logging
 import os
 
-MODEL_PATH = os.path.join(
-    os.path.dirname(__file__),
-    "..",
-    "..",
-    "models",
-    "best_rf_model.joblib"
+# Permitir configurar ruta del modelo por variable de entorno.
+_DEFAULT_MODEL_PATH = os.path.abspath(
+    os.path.join(
+        os.path.dirname(__file__),
+        "..",
+        "..",
+        "models",
+        "best_rf_model.joblib",
+    )
 )
-MODEL_PATH = os.path.abspath(MODEL_PATH)
+MODEL_PATH = os.getenv("MLOPS_MODEL_PATH", _DEFAULT_MODEL_PATH)
 MODEL_VERSION = "1.0.0"
 
 logging.basicConfig(level=logging.INFO)
@@ -73,7 +76,7 @@ def health():
 
 @app.get("/version")
 def version():
-    return {"version": MODEL_VERSION}
+    return {"version": MODEL_VERSION, "model_path": MODEL_PATH}
 
 
 @app.post("/predict", response_model=PredictResponse)
@@ -84,9 +87,11 @@ def predict(request: PredictRequest):
     df = pd.DataFrame([input_dict])
     try:
         prediction = model.predict(df)[0]
-        probabilities = model.predict_proba(df)[0].tolist() \
-            if hasattr(model, "predict_proba") \
+        probabilities = (
+            model.predict_proba(df)[0].tolist()
+            if hasattr(model, "predict_proba")
             else None
+        )
         classes = list(model.classes_)
         class_probs = [
             ClassProbability(class_name=c, probability=p)
@@ -109,9 +114,11 @@ def batch_predict(request: BatchPredictRequest):
     df = pd.DataFrame([r.dict(by_alias=True) for r in request.records])
     try:
         predictions = model.predict(df).tolist()
-        probabilities = model.predict_proba(df).tolist() \
-            if hasattr(model, "predict_proba") \
+        probabilities = (
+            model.predict_proba(df).tolist()
+            if hasattr(model, "predict_proba")
             else [None] * len(predictions)
+        )
         classes = list(model.classes_)
         result = [
             PredictResponse(

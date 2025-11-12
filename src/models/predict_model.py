@@ -1,4 +1,8 @@
-"""CLI para generar predicciones y métricas a partir de un modelo .joblib."""
+"""CLI para generar predicciones y métricas a partir de un modelo .joblib.
+
+Incluye la clase `BatchPredictor` que encapsula el flujo de inferencia por lote
+y mantiene compatibilidad con las funciones existentes y la CLI.
+"""
 
 # Maneja serialización de métricas a JSON
 import json
@@ -23,6 +27,35 @@ from sklearn.metrics import (
 import matplotlib.pyplot as plt
 # Estética de gráficos
 import seaborn as sns
+
+
+class BatchPredictor:
+    """Orquesta la inferencia por lote y exportación de artefactos.
+
+    Métodos principales:
+      - `predict_file(...)`: Carga datos y modelo, predice, exporta CSV y
+        opcionalmente métricas y figura de confusión.
+    """
+
+    def predict_file(
+        self,
+        input_path: str,
+        model_path: str,
+        predictions_path: str,
+        metrics_path: Optional[str] = None,
+        figures_dir: Optional[str] = None,
+    ) -> None:
+        ensure_dirs(predictions_path, metrics_path, figures_dir)
+        df = load_dataset(input_path)
+        model = joblib.load(model_path)
+        X = prepare_features(df)
+        y_true = df['Load_Type'] if 'Load_Type' in df.columns else None
+        y_pred = model.predict(X)
+        out = df.copy()
+        out['Prediction'] = y_pred
+        attach_probabilities(model, X, out)
+        out.to_csv(predictions_path, index=False)
+        maybe_metrics_and_figures(y_true, y_pred, metrics_path, figures_dir)
 
 
 def load_dataset(path: str) -> pd.DataFrame:
@@ -106,30 +139,14 @@ def main(input_path: str,
     - figures_dir: (opcional) carpeta para matriz de confusión
       si hay etiquetas.
     """
-    ensure_dirs(predictions_path, metrics_path, figures_dir)
-
-    # Carga el dataset de entrada
-    df = load_dataset(input_path)
-    # Carga el modelo entrenado (.joblib) que contiene el pipeline
-    model = joblib.load(model_path)
-
-    # Prepara solo las features (sin target ni fecha)
-    X = prepare_features(df)
-    # Obtiene etiquetas verdaderas si están presentes para evaluar
-    y_true = df['Load_Type'] if 'Load_Type' in df.columns else None
-
-    # Predicciones del modelo
-    y_pred = model.predict(X)
-    # Copia del DataFrame original para anexar predicciones
-    out = df.copy()
-    # Agrega columna de predicción
-    out['Prediction'] = y_pred
-    attach_probabilities(model, X, out)
-
-    # Exporta el CSV de predicciones
-    out.to_csv(predictions_path, index=False)
-
-    maybe_metrics_and_figures(y_true, y_pred, metrics_path, figures_dir)
+    # Delegar en la clase para mantener un único flujo de inferencia
+    BatchPredictor().predict_file(
+        input_path,
+        model_path,
+        predictions_path,
+        metrics_path,
+        figures_dir,
+    )
 
 
 if __name__ == '__main__':
@@ -178,7 +195,9 @@ def maybe_metrics_and_figures(
         return
     metrics = {
         'accuracy': float(accuracy_score(y_true, y_pred)),
-        'report': classification_report(y_true, y_pred, output_dict=True),
+        'report': classification_report(
+            y_true, y_pred, output_dict=True, zero_division=0
+        ),
     }
     if metrics_path:
         with open(metrics_path, 'w', encoding='utf-8') as f:

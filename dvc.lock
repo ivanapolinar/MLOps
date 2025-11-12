@@ -1,0 +1,78 @@
+schema: '2.0'
+stages:
+  preprocess:
+    cmd: python src/data/make_dataset.py data/raw/steel_energy_modified.csv 
+      data/clean/steel_energy_clean.csv
+    deps:
+    - path: data/raw/steel_energy_modified.csv
+      hash: md5
+      md5: 066018aa01ed991bf060cdfe01c15834
+      size: 3157634
+      isexec: true
+    - path: src/data/make_dataset.py
+      hash: md5
+      md5: 8fe15c7bcd8d9b82ecd7eb7a463458d4
+      size: 6332
+      isexec: true
+    outs:
+    - path: data/clean/steel_energy_clean.csv
+      hash: md5
+      md5: 5f113c44c273d729d64539aabc74e7d8
+      size: 3423392
+      isexec: true
+  train:
+    cmd: python src/models/train_model.py data/clean/steel_energy_clean.csv 
+      models/best_rf_model.joblib reports/figures
+    deps:
+    - path: data/clean/steel_energy_clean.csv
+      hash: md5
+      md5: 5f113c44c273d729d64539aabc74e7d8
+      size: 3423392
+      isexec: true
+    - path: src/models/train_model.py
+      hash: md5
+      md5: 5a4273330d08bf72abbf4100659569b1
+      size: 21724
+      isexec: true
+    outs:
+    - path: models/best_rf_model.joblib
+      hash: md5
+      md5: 82ce381f9704964d5c2d9a91f9540ab2
+      size: 28221508
+      isexec: true
+    - path: reports/figures
+      hash: md5
+      md5: ff87835782d7d575f65215798ecd9694.dir
+      size: 139511
+      nfiles: 5
+  predict:
+    cmd: python src/models/predict_model.py data/clean/steel_energy_clean.csv 
+      models/best_rf_model.joblib reports/predictions.csv reports/metrics.json 
+      reports/figures
+    deps:
+    - path: data/clean/steel_energy_clean.csv
+      hash: md5
+      md5: 5f113c44c273d729d64539aabc74e7d8
+      size: 3423392
+      isexec: true
+    - path: models/best_rf_model.joblib
+      hash: md5
+      md5: 82ce381f9704964d5c2d9a91f9540ab2
+      size: 28221508
+      isexec: true
+    - path: src/models/predict_model.py
+      hash: md5
+      md5: f97740180738b2697ceaf95568fb8353
+      size: 6551
+      isexec: true
+    outs:
+    - path: reports/metrics.json
+      hash: md5
+      md5: 4751ae48c871df3576460f1d8bb83837
+      size: 914
+      isexec: true
+    - path: reports/predictions.csv
+      hash: md5
+      md5: 9e7e97ff6b6a2fedc2c624d4928d80e9
+      size: 5364763
+      isexec: true
