@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import logging
 import click
 import joblib
 import matplotlib.pyplot as plt
@@ -199,14 +200,14 @@ class ModelEvaluator:
         Purpose:
             - Evaluate the model performance
         """
+        logger = logging.getLogger(__name__)
         y_pred = model.predict(X_test)
         # Evitar UndefinedMetricWarning cuando alguna clase no es predicha
         report = classification_report(y_test, y_pred, zero_division=0)
         acc = accuracy_score(y_test, y_pred)
 
-        print(f"Classification Report ({name}):")
-        print(classification_report(y_test, y_pred, zero_division=0))
-        print("Accuracy:", acc)
+        logger.info("Classification Report (%s):\n%s", name, report)
+        logger.info("Accuracy (%s): %.6f", name, acc)
 
         plt.figure(figsize=(6, 4))
         sns.heatmap(
@@ -231,7 +232,12 @@ class HyperparameterTuner:
         - Handle hyperparameter tuning
     """
 
-    def __init__(self, param_dist: dict | None = None):
+    def __init__(
+        self,
+        param_dist: dict | None = None,
+        n_iter: int | None = None,
+        cv: int | None = None,
+    ):
         """
         Inputs:
             - param_dist: Dictionary with hyperparameters distributions
@@ -249,6 +255,15 @@ class HyperparameterTuner:
                 "randomforestclassifier__max_features": ["sqrt", "log2"],
             }
         )
+        # Permitir configurar por variables de entorno sin romper defaults
+        try:
+            self.n_iter = int(os.getenv("TUNE_N_ITER", "30")) if n_iter is None else n_iter
+        except Exception:
+            self.n_iter = 30
+        try:
+            self.cv = int(os.getenv("TUNE_CV", "3")) if cv is None else cv
+        except Exception:
+            self.cv = 3
 
     def tune(
         self,
@@ -272,8 +287,8 @@ class HyperparameterTuner:
         rf_rscv = RandomizedSearchCV(
             estimator=model,
             param_distributions=self.param_dist,
-            n_iter=30,
-            cv=3,
+            n_iter=self.n_iter,
+            cv=self.cv,
             scoring="accuracy",
             verbose=1,
             n_jobs=-1,
@@ -347,7 +362,8 @@ class ModelPersister:
         Purpose:
             - Save the trained model
         """
-        joblib.dump(model, model_path)
+        # Comprimir el modelo para reducir tamaño en disco
+        joblib.dump(model, model_path, compress=3)
         print(f"Model saved in {model_path}")
 
 

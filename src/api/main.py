@@ -6,14 +6,17 @@ import pandas as pd
 import logging
 import os
 
-MODEL_PATH = os.path.join(
-    os.path.dirname(__file__),
-    "..",
-    "..",
-    "models",
-    "best_rf_model.joblib"
+# Permitir configurar ruta del modelo por variable de entorno.
+_DEFAULT_MODEL_PATH = os.path.abspath(
+    os.path.join(
+        os.path.dirname(__file__),
+        "..",
+        "..",
+        "models",
+        "best_rf_model.joblib",
+    )
 )
-MODEL_PATH = os.path.abspath(MODEL_PATH)
+MODEL_PATH = os.getenv("MLOPS_MODEL_PATH", _DEFAULT_MODEL_PATH)
 MODEL_VERSION = "1.0.0"
 
 logging.basicConfig(level=logging.INFO)
@@ -73,7 +76,7 @@ def health():
 
 @app.get("/version")
 def version():
-    return {"version": MODEL_VERSION}
+    return {"version": MODEL_VERSION, "model_path": MODEL_PATH}
 
 
 @app.post("/predict", response_model=PredictResponse)
