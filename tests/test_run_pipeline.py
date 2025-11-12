@@ -78,9 +78,10 @@ def test_run_pipeline_cli_end_to_end(tmp_path, monkeypatch):
     assert os.path.exists(predictions)
     assert os.path.exists(metrics)
     assert os.path.exists(os.path.join(figures, 'confusion_matrix_base.png'))
-    assert os.path.exists(os.path.join(figures, 'confusion_matrix_optimized.png'))
+    assert os.path.exists(
+        os.path.join(figures, 'confusion_matrix_optimized.png')
+    )
     assert os.path.exists(os.path.join(figures, 'top_features.png'))
     assert os.path.exists(
         os.path.join(figures, 'confusion_matrix_predict.png')
     )
-

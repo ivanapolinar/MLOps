@@ -87,9 +87,11 @@ def predict(request: PredictRequest):
     df = pd.DataFrame([input_dict])
     try:
         prediction = model.predict(df)[0]
-        probabilities = model.predict_proba(df)[0].tolist() \
-            if hasattr(model, "predict_proba") \
+        probabilities = (
+            model.predict_proba(df)[0].tolist()
+            if hasattr(model, "predict_proba")
             else None
+        )
         classes = list(model.classes_)
         class_probs = [
             ClassProbability(class_name=c, probability=p)
@@ -112,9 +114,11 @@ def batch_predict(request: BatchPredictRequest):
     df = pd.DataFrame([r.dict(by_alias=True) for r in request.records])
     try:
         predictions = model.predict(df).tolist()
-        probabilities = model.predict_proba(df).tolist() \
-            if hasattr(model, "predict_proba") \
+        probabilities = (
+            model.predict_proba(df).tolist()
+            if hasattr(model, "predict_proba")
             else [None] * len(predictions)
+        )
         classes = list(model.classes_)
         result = [
             PredictResponse(

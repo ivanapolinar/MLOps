@@ -1,6 +1,5 @@
 import os
 import pandas as pd
-
 from src.pipeline.mlops_pipeline import MLOpsPipeline
 
 
@@ -71,4 +70,3 @@ def test_pipeline_end_to_end(tmp_path, monkeypatch):
     # Figura de confusión generada durante la predicción
     cm_path = os.path.join(str(figures_dir), 'confusion_matrix_predict.png')
     assert os.path.exists(cm_path)
-

@@ -68,7 +68,9 @@ class MLOpsPipeline:
         """
         df_raw = md.load_data(input_filepath)
         df_cleaned, num_cols, object_cols, date_cols = md.clean_data(df_raw)
-        df_imputed = md.impute_data(df_cleaned, num_cols, object_cols, date_cols)
+        df_imputed = md.impute_data(
+            df_cleaned, num_cols, object_cols, date_cols
+        )
         df_final = md.drop_null_targets(df_imputed, target_col="Load_Type")
         md.save_data(df_final, output_filepath)
         return df_final
@@ -80,7 +82,8 @@ class MLOpsPipeline:
         return tm.split_data(df)
 
     def build_preprocessing(self, X_train: pd.DataFrame):
-        """Construye el preprocesamiento y retorna (preproc, num_cols, cat_cols)."""
+        """Construye preprocesamiento y retorna
+        (preproc, num_cols, cat_cols)."""
         return tm.build_preprocessing(X_train)
 
     def train_base(
@@ -90,8 +93,10 @@ class MLOpsPipeline:
         preprocessing,
         params: Optional[dict] = None,
     ):
-        """Entrena un modelo base usando RandomForest + preprocesamiento."""
-        return tm.train_base_model(X_train, y_train, preprocessing, params or {})
+        """Entrena un modelo base con RF + preprocesamiento."""
+        return tm.train_base_model(
+            X_train, y_train, preprocessing, params or {}
+        )
 
     def tune_hyperparams(self, model, X_train, y_train):
         """Ajuste de hiperparámetros (RandomizedSearchCV)."""
@@ -105,7 +110,9 @@ class MLOpsPipeline:
         self, model, num_cols, cat_cols, figures_dir: str
     ):
         """Exporta importancias y gráfico top-15 a figures_dir."""
-        return tm.save_feature_importance(model, num_cols, cat_cols, figures_dir)
+        return tm.save_feature_importance(
+            model, num_cols, cat_cols, figures_dir
+        )
 
     def persist_model(self, model, model_path: str) -> None:
         """Guarda el modelo a disco (joblib)."""

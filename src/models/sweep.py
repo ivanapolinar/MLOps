@@ -82,10 +82,14 @@ class SweepRunner:
                     best_fig = fig_path
 
         if best_model is None:
-            raise RuntimeError("No se pudo entrenar ningún modelo en el barrido.")
+            raise RuntimeError(
+                "No se pudo entrenar ningún modelo en el barrido."
+            )
 
         with mlflow.start_run(run_name="sweep_rf_best"):
-            mlflow.log_params({f"best__{k}": v for k, v in best_params.items()})
+            mlflow.log_params(
+                {f"best__{k}": v for k, v in best_params.items()}
+            )
             mlflow.log_metric("best_accuracy", float(best_acc))
             if best_fig:
                 mlflow.log_artifact(best_fig)

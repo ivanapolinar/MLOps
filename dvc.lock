@@ -11,8 +11,8 @@ stages:
       isexec: true
     - path: src/data/make_dataset.py
       hash: md5
-      md5: 3e9a93c27bc5bf1c1f52d19dda785bbe
-      size: 6281
+      md5: 8fe15c7bcd8d9b82ecd7eb7a463458d4
+      size: 6332
       isexec: true
     outs:
     - path: data/clean/steel_energy_clean.csv
@@ -31,8 +31,8 @@ stages:
       isexec: true
     - path: src/models/train_model.py
       hash: md5
-      md5: 6a5df0e49e559793128e63fe2c590791
-      size: 21628
+      md5: 5a4273330d08bf72abbf4100659569b1
+      size: 21724
       isexec: true
     outs:
     - path: models/best_rf_model.joblib

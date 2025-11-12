@@ -257,11 +257,17 @@ class HyperparameterTuner:
         )
         # Permitir configurar por variables de entorno sin romper defaults
         try:
-            self.n_iter = int(os.getenv("TUNE_N_ITER", "30")) if n_iter is None else n_iter
+            self.n_iter = (
+                int(os.getenv("TUNE_N_ITER", "30"))
+                if n_iter is None else n_iter
+            )
         except Exception:
             self.n_iter = 30
         try:
-            self.cv = int(os.getenv("TUNE_CV", "3")) if cv is None else cv
+            self.cv = (
+                int(os.getenv("TUNE_CV", "3"))
+                if cv is None else cv
+            )
         except Exception:
             self.cv = 3
 

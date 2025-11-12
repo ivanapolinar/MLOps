@@ -24,13 +24,17 @@ class DatasetProcessor:
     def impute(self, df: pd.DataFrame, num_cols, object_cols, date_cols):
         return impute_data(df, num_cols, object_cols, date_cols)
 
-    def drop_null_targets(self, df: pd.DataFrame, target_col: str = "Load_Type"):
+    def drop_null_targets(
+        self, df: pd.DataFrame, target_col: str = "Load_Type"
+    ):
         return drop_null_targets(df, target_col)
 
     def save(self, df: pd.DataFrame, output_filepath: str) -> None:
         save_data(df, output_filepath)
 
-    def process(self, input_filepath: str, output_filepath: str) -> pd.DataFrame:
+    def process(
+        self, input_filepath: str, output_filepath: str
+    ) -> pd.DataFrame:
         """Pipeline de procesamiento crudo → limpio y guardado."""
         df_raw = self.load(input_filepath)
         df_cleaned, num_cols, object_cols, date_cols = self.clean(df_raw)
@@ -48,7 +52,7 @@ def load_data(input_filepath):
 def clean_numeric(df, num_cols):
     for col in num_cols:
         # Normalizar a string y eliminar cualquier carácter no numérico,
-        # luego convertir a numérico. Esto evita el FutureWarning de downcasting
+        # luego convertir a numérico. Evita FutureWarning de downcasting
         # de Series.replace con regex en futuras versiones de pandas.
         s = df[col].astype("string")
         s = s.str.replace(r"[^0-9.\-]", "", regex=True)
@@ -165,7 +169,11 @@ def main(input_filepath, output_filepath):
     logger.info('Cargando datos desde %s', input_filepath)
     processor = DatasetProcessor()
     df_final = processor.process(input_filepath, output_filepath)
-    logger.info('Archivo guardado en %s (%d filas)', output_filepath, len(df_final))
+    logger.info(
+        'Archivo guardado en %s (%d filas)',
+        output_filepath,
+        len(df_final),
+    )
 
 
 if __name__ == '__main__':
