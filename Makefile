@@ -135,7 +135,41 @@ pipeline-class: requirements
 			if [ $$i -eq 30 ]; then echo "✖ La API no respondió a tiempo"; kill $$(cat .api_server.pid) || true; exit 1; fi; \
 		done; \
 		MLOPS_MODEL_PATH="$$MODEL_PATH" MPLBACKEND=Agg $(PYTHON_INTERPRETER) -m pytest -q src/api/test/ || { echo "✖ Pruebas de API fallaron"; kill $$(cat .api_server.pid) || true; exit 1; }; \
-		kill $$(cat .api_server.pid) || true; rm -f .api_server.pid
+			kill $$(cat .api_server.pid) || true; rm -f .api_server.pid
+
+## Sincronizar cambios remotos y verificar ejecutando el pipeline (sin versionar)
+prepare-update: requirements
+	@echo ">>> Preparando entorno: sincronizar Git y DVC y validar pipeline"
+	@echo ">>> Verificando cambios locales (stash temporal si aplica)"
+	@if ! git diff --quiet || ! git diff --cached --quiet; then \
+		echo ">>> Cambios locales detectados. Ejecutando: git stash push -u"; \
+		git stash push -u -m "auto-stash prepare-update" && echo 1 > .git_autostash_prepare || { echo "✖ No se pudo crear stash"; exit 1; }; \
+	else \
+		echo ">>> No hay cambios locales"; \
+	fi
+	@echo ">>> git pull (solo fast-forward; NO_PULL=true para omitir)"
+	@if [ "$${NO_PULL}" != "true" ]; then \
+		git pull --ff-only || { echo "✖ git pull --ff-only falló (historial divergente). Resuelve manualmente y reintenta"; exit 1; }; \
+	else \
+		echo ">>> NO_PULL=true: omitiendo git pull"; \
+	fi
+	@echo ">>> dvc pull (condicional/limitado)"
+	@if [ -f dvc.lock ] && [ "$${NO_PULL}" != "true" ]; then \
+		echo ">>> dvc.lock encontrado: realizando pull limitado de artefactos .dvc (datos y modelo)"; \
+		dvc pull data/raw/steel_energy_modified.csv.dvc data/raw/steel_energy_original.csv.dvc 2>/dev/null || true; \
+		dvc pull data/interim/steel_energy_modified.csv.dvc 2>/dev/null || true; \
+		dvc pull models/final_model.joblib.dvc 2>/dev/null || true; \
+		dvc pull data/processed/steel_energy_clean.csv.dvc 2>/dev/null || true; \
+	else \
+		echo ">>> dvc.lock no existe o NO_PULL=true: omitiendo dvc pull"; \
+	fi
+	@echo ">>> Ejecutando pipeline-class para validar estado (tests + entrenamiento + pruebas API)"
+	@$(MAKE) pipeline-class || { echo "✖ pipeline-class falló"; [ -f .git_autostash_prepare ] && git stash pop || true; rm -f .git_autostash_prepare; exit 1; }
+	@echo ">>> Restaurando cambios locales previos (si se generó stash)"
+	@if [ -f .git_autostash_prepare ]; then \
+		git stash pop || { echo "✖ Conflictos al aplicar stash; resuélvelos y reintenta"; rm -f .git_autostash_prepare; exit 1; }; \
+		rm -f .git_autostash_prepare; \
+	fi
 
 ## Flujo completo: pull de Git y DVC, ejecutar pipeline, subir artefactos a DVC (S3) y Git
 pipeline-deploy: requirements
