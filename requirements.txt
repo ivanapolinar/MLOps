@@ -5,7 +5,7 @@
 click~=8.1.8
 Sphinx
 coverage
-awscli
+#awscli
 flake8
 python-dotenv>=0.5.1
 pytest
@@ -20,3 +20,7 @@ setuptools
 pydantic
 requests
 fastapi
+alibi-detect
+tensorflow>=2.0
+tensorflow_probability
+tf_keras
