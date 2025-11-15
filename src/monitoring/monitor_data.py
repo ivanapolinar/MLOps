@@ -1,20 +1,20 @@
 import pandas as pd
-from evidently.report import Report
-from evidently.metric_preset import DataDriftPreset
+import os
 
 
-def load_data(path):
-    """Load CSV file."""
+def load_monitoring_data(path):
+    if not os.path.exists(path):
+        raise FileNotFoundError(
+            f"Monitoring file not found: {path}"
+        )
     return pd.read_csv(path)
 
 
-def generate_report(reference_path, current_path, output_path):
-    """Generate drift report with Evidently."""
-    reference = load_data(reference_path)
-    current = load_data(current_path)
+def generate_summary(df):
+    summary = df.describe(include="all")
+    return summary
 
-    report = Report(metrics=[DataDriftPreset()])
-    report.run(reference_data=reference, current_data=current)
 
-    report.save_html(output_path)
-    print(f"Report saved to: {output_path}")
+def save_summary(summary, output_path):
+    summary.to_csv(output_path)
+    print(f"Summary saved to {output_path}")
