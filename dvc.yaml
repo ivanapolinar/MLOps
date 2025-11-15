@@ -32,3 +32,22 @@ stages:
     outs:
       - reports/predictions.csv
       - reports/metrics.json
+
+  evaluate:
+    # Evalua el modelo entrenado con respecto al dataset original y un dataset alterno (ejemplo, mismo dataset, no hay drift)
+    cmd: python src/models/evaluate_drift.py data/clean/steel_energy_clean.csv data/clean/steel_energy_clean.csv Usage_kWh models/best_rf_model.joblib reports/
+    deps:
+      - src/models/evaluate_drift.py
+      - models/best_rf_model.joblib
+      - data/clean/steel_energy_clean.csv
+    outs:
+      - reports/kde_plot_evaluate_Usage_kWh.png
+
+  simulate:
+    # Simula drift en el modelo e indica posibles acciones de contención
+    cmd: python src/models/evaluate_drift.py data/clean/steel_energy_clean.csv data/clean/steel_energy_clean.csv Usage_kWh models/best_rf_model.joblib reports/ True
+    deps:
+      - src/models/evaluate_drift.py
+      - models/best_rf_model.joblib
+      - data/clean/steel_energy_clean.csv
+
