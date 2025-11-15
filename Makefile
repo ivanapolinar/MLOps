@@ -358,25 +358,25 @@ help:
 
 ## Serve the FastAPI application with uvicorn (production mode)
 serve-api:
-MODEL_URI=$(MODEL_URI) uvicorn src.api.main:app --host 0.0.0.0 --port 8000
+	MODEL_URI=$(MODEL_URI) uvicorn src.api.main:app --host 0.0.0.0 --port 8000
 
 ## Serve the FastAPI application with uvicorn (development mode with auto-reload)
 serve-api-reload:
-MODEL_URI=$(MODEL_URI) uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
+	MODEL_URI=$(MODEL_URI) uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
 
 ## Serve the FastAPI application in detached mode (background process)
 serve-api-detached:
-MODEL_URI=$(MODEL_URI) nohup uvicorn src.api.main:app --host 0.0.0.0 --port 8000 > .api_server.log 2>&1 & echo $$! > .api_server.pid
+	MODEL_URI=$(MODEL_URI) nohup uvicorn src.api.main:app --host 0.0.0.0 --port 8000 > .api_server.log 2>&1 & echo $$! > .api_server.pid
 
 ## Stop the detached API server
 stop-api:
-@if [ -f .api_server.pid ]; then \
-kill $$(cat .api_server.pid) || true; \
-rm -f .api_server.pid; \
-echo "API server stopped"; \
-else \
-echo "No API server PID file found"; \
-fi
+	@if [ -f .api_server.pid ]; then \
+		kill $$(cat .api_server.pid) || true; \
+		rm -f .api_server.pid; \
+		echo "API server stopped"; \
+	else \
+		echo "No API server PID file found"; \
+	fi
 
 #################################################################################
 # DOCKER TARGETS                                                                #
@@ -384,15 +384,15 @@ fi
 
 ## Build Docker image for the API
 docker-build:
-docker build -t steel-energy-api:latest -f .devcontainer/Dockerfile .
+	docker build -t steel-energy-api:latest -f .devcontainer/Dockerfile .
 
 ## Run Docker container with local model
 docker-run:
-docker run -p 8000:8000 -e MODEL_URI=/workspaces/MLOps/models/best_rf_model.joblib steel-energy-api:latest
+	docker run -p 8000:8000 -e MODEL_URI=/workspaces/MLOps/models/best_rf_model.joblib steel-energy-api:latest
 
 ## Run Docker container with MLflow model URI
 docker-run-mlflow:
-docker run -p 8000:8000 -e MODEL_URI=$(MODEL_URI) -e MLFLOW_TRACKING_URI=$(MLFLOW_TRACKING_URI) steel-energy-api:latest
+	docker run -p 8000:8000 -e MODEL_URI=$(MODEL_URI) -e MLFLOW_TRACKING_URI=$(MLFLOW_TRACKING_URI) steel-energy-api:latest
 
 #################################################################################
 # CODESPACE SETUP                                                               #
@@ -400,6 +400,6 @@ docker run -p 8000:8000 -e MODEL_URI=$(MODEL_URI) -e MLFLOW_TRACKING_URI=$(MLFLO
 
 ## Setup Codespace environment (install dependencies and configure)
 codespace-setup: requirements
-@echo ">>> Setting up Codespace environment"
-@if [ -f .env.example ] && [ ! -f .env ]; then cp .env.example .env && echo "Created .env from .env.example"; fi
-@echo ">>> Codespace setup complete"
+	@echo ">>> Setting up Codespace environment"
+	@if [ -f .env.example ] && [ ! -f .env ]; then cp .env.example .env && echo "Created .env from .env.example"; fi
+	@echo ">>> Codespace setup complete"
