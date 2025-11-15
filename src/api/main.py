@@ -43,6 +43,7 @@ app = FastAPI(
     version=MODEL_VERSION,
 )
 
+
 class PredictRequest(BaseModel):
     Usage_kWh: float
     Lagging_Current_Reactive_Power_kVarh: float = Field(..., alias="Lagging_Current_Reactive.Power_kVarh")
@@ -55,12 +56,15 @@ class PredictRequest(BaseModel):
     WeekStatus: str
     Day_of_week: str
 
+
 class BatchPredictRequest(BaseModel):
     records: List[PredictRequest]
+
 
 class ClassProbability(BaseModel):
     class_name: str
     probability: Optional[float]
+
 
 class PredictResponse(BaseModel):
     prediction: str
@@ -187,7 +191,13 @@ def batch_predict(request: BatchPredictRequest):
         results = []
         for i, pred in enumerate(preds):
             probs = probabilities[i].tolist() if (probabilities is not None) else None
-            class_probs = [ClassProbability(class_name=c, probability=float(p)) for c, p in zip(classes, probs)] if (probs is not None and classes) else []
+            if probs is not None and classes:
+                class_probs = [
+                    ClassProbability(class_name=c, probability=float(p))
+                    for c, p in zip(classes, probs)
+                ]
+            else:
+                class_probs = []
             results.append(PredictResponse(prediction=str(pred), class_probabilities=class_probs))
         return results
     except Exception as e:
