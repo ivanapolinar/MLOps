@@ -76,7 +76,7 @@ def model_health_check(
         healthy = True
 
     # Print status
-    print(f'Feature Pipeline Status: {status}\n')
+    print(f'Model Status: {status}\n')
 
     return healthy
 
