@@ -1,0 +1,48 @@
+# --- API serving targets to append to the repository Makefile ---
+# Add these targets near the other "COMANDOS" rules in Makefile.
+# Use tabs for indentation lines below (Makefile requires tabs).
+
+## Levantar API en primer plano (dev)
+serve-api: requirements
+	$(PYTHON_INTERPRETER) -m uvicorn src.api.main:app --host 0.0.0.0 --port 8000
+
+## Levantar API con autoreload (dev)
+serve-api-reload: requirements
+	$(PYTHON_INTERPRETER) -m uvicorn src.api.main:app --reload --host 0.0.0.0 --port 8000
+
+## Levantar API en background (daemon) y guardar pid/log
+serve-api-detached: requirements
+	@(echo "Starting API in background (logs -> .api_server.log, pid -> .api_server.pid)"; \
+	MODEL_URI=$${MODEL_URI:-./models/best_rf_model.joblib} nohup $(PYTHON_INTERPRETER) -m uvicorn src.api.main:app --host 0.0.0.0 --port 8000 > .api_server.log 2>&1 & echo $$! > .api_server.pid)
+
+## Detener API arrancada con serve-api-detached
+stop-api:
+	@{ if [ -f .api_server.pid ]; then \
+		echo "Stopping API (pid $$(cat .api_server.pid))"; \
+		kill $$(cat .api_server.pid) || true; \
+		rm -f .api_server.pid; \
+		echo "Log file: .api_server.log"; \
+	else \
+		echo ".api_server.pid not found — no background API to stop"; \
+	fi }
+
+## Construir imagen Docker (con nombre por defecto steel-energy-api:latest)
+docker-build:
+	docker build -t steel-energy-api:latest .
+
+## Ejecutar contenedor (monta ./models en /app/models y expone 8000)
+docker-run:
+	@echo "Run container mounting ./models -> /app/models and setting MODEL_URI to /app/models/best_rf_model.joblib"
+	docker run --rm -p 8000:8000 -e MODEL_URI=/app/models/best_rf_model.joblib -v $(PWD)/models:/app/models steel-energy-api:latest
+
+## Ejecutar contenedor usando MLflow registry (requiere credenciales en env)
+docker-run-mlflow:
+	@echo "Run container using MLflow model URI (set MODEL_URI env to models:/<NAME>/<VERSION> and MLFLOW_TRACKING_URI)"
+	docker run --rm -p 8000:8000 -e MODEL_URI="$${MODEL_URI}" -e MLFLOW_TRACKING_URI="$${MLFLOW_TRACKING_URI}" steel-energy-api:latest
+
+## Preparar Codespace (instala deps, copia .env y valida)
+codespace-setup: requirements
+	@echo ">>> Copiando .env si no existe"
+	@if [ -f .env.example ] && [ ! -f .env ]; then cp .env.example .env && echo "Creado .env desde .env.example"; fi
+	@echo ">>> Instalando dependencias desde requirements.txt (ya hace make requirements)"
+	@echo ">>> Código listo: puedes ejecutar 'make serve-api-reload' o usar la tarea de VS Code 'Serve API (uvicorn - reload)'."

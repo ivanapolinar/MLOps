@@ -208,3 +208,57 @@ Esta sección resume cómo crear/usar experimentos con MLflow, tanto en modo loc
   - Verifica que `MLFLOW_TRACKING_URI` apunte a `http://localhost:5000` y que el server esté levantado.
 - Si trabajas en modo local (file store) y no ves corridas en la UI del servidor:
   - Usa `make mlflow-ui` para leer `./mlruns` o cambia `MLFLOW_TRACKING_URI` a `http://localhost:5000` y levanta el server.
+
+
+# Serving y portabilidad del modelo (FastAPI)
+
+RUTA / VERSIÓN DEL ARTEFACTO:
+- Modelo registrado en MLflow Registry: models:/<name>/<version>
+  Ejemplo: models:/SteelEnergyRF/1
+- Modelo local (joblib): ./models/best_rf_model.joblib
+
+Variables de entorno relevantes:
+- MODEL_URI: ruta local o MLflow URI (default ./models/best_rf_model.joblib)
+- MODEL_VERSION: versión del servicio
+- MLFLOW_TRACKING_URI, MLFLOW_EXPERIMENT, etc. (si usas MLflow)
+
+Ejecutar local:
+1. pip install -r requirements.txt
+2. Coloca el artefacto (por ejemplo ./models/best_rf_model.joblib)
+3. MODEL_URI=./models/best_rf_model.joblib uvicorn src.api.main:app --reload --host 0.0.0.0 --port 8000
+
+Probar /predict (ejemplo):
+curl -X POST "http://127.0.0.1:8000/predict" -H "Content-Type: application/json" -d '{
+"Usage_kWh": 200.0,
+"Lagging_Current_Reactive.Power_kVarh": 12.1,
+"Leading_Current_Reactive_Power_kVarh": 0.0,
+"CO2(tCO2)": 0.07,
+"Lagging_Current_Power_Factor": 0.85,
+"Leading_Current_Power_Factor": 0.0,
+"NSM": 36000,
+"mixed_type_col": 0.0,
+"WeekStatus": "WEEKDAY",
+"Day_of_week": "MONDAY"
+}'
+
+Docker:
+- Build:
+  docker build -t steel-energy-api:latest .
+- Run (montando modelos desde host):
+  docker run -p 8000:8000 -e MODEL_URI=/app/models/best_rf_model.joblib -v $(pwd)/models:/app/models steel-energy-api:latest
+
+- Run desde MLflow registry:
+  docker run -p 8000:8000 -e MODEL_URI="models:/SteelEnergyRF/1" -e MLFLOW_TRACKING_URI="<tracking_uri>" steel-energy-api:latest
+
+Endpoints:
+- GET /health
+- GET /version -> { "version": "...", "model_path": "..." }
+- POST /predict -> recibe JSON con fields (alias aceptados)
+- POST /batch_predict
+- GET /classes
+- GET /metrics (dummy)
+- POST /retrain (dummy)
+
+Tests:
+- pytest -q
+- test_api.py usa requests contra localhost:8000 (levanta la app antes)

@@ -1,0 +1,33 @@
+{
+  "name": "MLOps - Codespace",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "workspaceFolder": "/workspaces/MLOps",
+  "forwardPorts": [8000, 5000],
+  "containerEnv": {
+    "PYTHONPATH": "/workspaces/MLOps/src",
+    "MODEL_URI": "/workspaces/MLOps/models/best_rf_model.joblib",
+    "MODEL_VERSION": "1.0.0"
+  },
+  "postCreateCommand": "pip install --upgrade pip setuptools wheel && pip install -r requirements.txt || true && if [ -f .env.example ] && [ ! -f .env ]; then cp .env.example .env; fi",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-azuretools.vscode-docker",
+        "eamodio.gitlens",
+        "ms-vscode-remote.remote-containers"
+      ],
+      "settings": {
+        "python.pythonPath": "/usr/local/bin/python",
+        "python.analysis.extraPaths": [
+          "/workspaces/MLOps/src"
+        ]
+      }
+    }
+  },
+  "shutdownAction": "stopContainer"
+}

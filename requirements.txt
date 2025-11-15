@@ -1,22 +1,32 @@
-# local package
 -e .
 
-# external requirements
-click~=8.1.8
-Sphinx
-coverage
-awscli
-flake8
+# pinned runtime / serving
+fastapi
+uvicorn[standard]
+pydantic
 python-dotenv>=0.5.1
-pytest
-mlflow
+requests
+
+# core data + modeling
 pandas
 numpy
+scikit-learn
+joblib
+
+# ML lifecycle / experiment tracking (optional at runtime, required for some features)
+mlflow
+
+# CLI / utils / test / lint
+click~=8.1.8
+pytest
+flake8
+coverage
+Sphinx
+awscli
+
+# visualization
 matplotlib
 seaborn
-joblib
-scikit-learn
+
+# local packaging helper
 setuptools
-pydantic
-requests
-fastapi
