@@ -91,23 +91,23 @@ def _align_input_df(input_dict: Dict[str, Any]) -> pd.DataFrame:
     return df
 
 
+# TODO: Migrate to @app.lifespan when upgrading FastAPI beyond 0.95.2
 @app.on_event("startup")
 def load_model():
     global model, model_uri_loaded, model_feature_names, model_classes
 
-    model_uri = os.getenv("MODEL_URI", MODEL_URI)
-    logger.info("Startup: attempting to load model from %s", model_uri)
+    logger.info("Startup: attempting to load model from %s", MODEL_URI)
     try:
-        if isinstance(model_uri, str) and model_uri.startswith("models:") and USE_MLFLOW:
-            model = mlflow.pyfunc.load_model(model_uri)
-            model_uri_loaded = model_uri
-            logger.info("Loaded model from MLflow registry: %s", model_uri)
+        if isinstance(MODEL_URI, str) and MODEL_URI.startswith("models:") and USE_MLFLOW:
+            model = mlflow.pyfunc.load_model(MODEL_URI)
+            model_uri_loaded = MODEL_URI
+            logger.info("Loaded model from MLflow registry: %s", MODEL_URI)
         else:
-            if not os.path.exists(model_uri):
-                raise FileNotFoundError(f"Model file not found at {model_uri}")
-            model = joblib.load(model_uri)
-            model_uri_loaded = model_uri
-            logger.info("Loaded model from local path: %s", model_uri)
+            if not os.path.exists(MODEL_URI):
+                raise FileNotFoundError(f"Model file not found at {MODEL_URI}")
+            model = joblib.load(MODEL_URI)
+            model_uri_loaded = MODEL_URI
+            logger.info("Loaded model from local path: %s", MODEL_URI)
 
         if hasattr(model, "feature_names_in_"):
             model_feature_names = list(getattr(model, "feature_names_in_"))
