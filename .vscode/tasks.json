@@ -1,0 +1,1 @@
+{ "version": "2.0.0", "tasks": [ { "label": "Serve API (uvicorn - reload)", "type": "shell", "command": "make serve-api-reload", "group": { "kind": "build", "isDefault": true }, "presentation": { "reveal": "always", "panel": "shared" } }, { "label": "Run tests (pytest)", "type": "shell", "command": "make test", "presentation": { "reveal": "always", "panel": "shared" } } ] }
