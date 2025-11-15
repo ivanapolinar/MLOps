@@ -76,3 +76,46 @@ stages:
       md5: 9e7e97ff6b6a2fedc2c624d4928d80e9
       size: 5364763
       isexec: true
+  evaluate:
+    cmd: python src/models/evaluate_drift.py data/clean/steel_energy_clean.csv 
+      data/clean/steel_energy_clean.csv Usage_kWh models/best_rf_model.joblib 
+      reports/
+    deps:
+    - path: data/clean/steel_energy_clean.csv
+      hash: md5
+      md5: 5f113c44c273d729d64539aabc74e7d8
+      size: 3423392
+      isexec: true
+    - path: models/best_rf_model.joblib
+      hash: md5
+      md5: 82ce381f9704964d5c2d9a91f9540ab2
+      size: 28221508
+      isexec: true
+    - path: src/models/evaluate_drift.py
+      hash: md5
+      md5: ec42f857627d1826b21d8d9477123dca
+      size: 7620
+    outs:
+    - path: reports/kde_plot_evaluate_Usage_kWh.png
+      hash: md5
+      md5: 9fbdbb50930446a9fbce909ca4f4f528
+      size: 33486
+  simulate:
+    cmd: python src/models/evaluate_drift.py data/clean/steel_energy_clean.csv 
+      data/clean/steel_energy_clean.csv Usage_kWh models/best_rf_model.joblib 
+      reports/ True
+    deps:
+    - path: data/clean/steel_energy_clean.csv
+      hash: md5
+      md5: 5f113c44c273d729d64539aabc74e7d8
+      size: 3423392
+      isexec: true
+    - path: models/best_rf_model.joblib
+      hash: md5
+      md5: 82ce381f9704964d5c2d9a91f9540ab2
+      size: 28221508
+      isexec: true
+    - path: src/models/evaluate_drift.py
+      hash: md5
+      md5: ec42f857627d1826b21d8d9477123dca
+      size: 7620
