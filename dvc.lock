@@ -8,18 +8,15 @@ stages:
       hash: md5
       md5: 066018aa01ed991bf060cdfe01c15834
       size: 3157634
-      isexec: true
     - path: src/data/make_dataset.py
       hash: md5
-      md5: 8fe15c7bcd8d9b82ecd7eb7a463458d4
-      size: 6332
-      isexec: true
+      md5: 20bd69dfafdbb5c6498e51dfb1b39152
+      size: 6516
     outs:
     - path: data/clean/steel_energy_clean.csv
       hash: md5
-      md5: 5f113c44c273d729d64539aabc74e7d8
-      size: 3423392
-      isexec: true
+      md5: f261b2ee44355b2583c1569800ee9c86
+      size: 3458805
   train:
     cmd: python src/models/train_model.py data/clean/steel_energy_clean.csv 
       models/best_rf_model.joblib reports/figures
@@ -119,3 +116,19 @@ stages:
       hash: md5
       md5: ec42f857627d1826b21d8d9477123dca
       size: 7620
+  monitor:
+    cmd: python src/monitoring/monitor_data.py
+    deps:
+    - path: data/clean/steel_energy_clean.csv
+      hash: md5
+      md5: f261b2ee44355b2583c1569800ee9c86
+      size: 3458805
+    - path: src/monitoring/monitor_data.py
+      hash: md5
+      md5: 0b8abc478629bb4742a44657d974fe96
+      size: 797
+    outs:
+    - path: reports/monitoring/data_drift_report.html
+      hash: md5
+      md5: 50ddbb97a8c4744f7ab65c1b40ed8bcd
+      size: 10058259
