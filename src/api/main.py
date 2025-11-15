@@ -43,7 +43,6 @@ app = FastAPI(
     version=MODEL_VERSION,
 )
 
-
 class PredictRequest(BaseModel):
     Usage_kWh: float
     Lagging_Current_Reactive_Power_kVarh: float = Field(..., alias="Lagging_Current_Reactive.Power_kVarh")
@@ -56,15 +55,12 @@ class PredictRequest(BaseModel):
     WeekStatus: str
     Day_of_week: str
 
-
 class BatchPredictRequest(BaseModel):
     records: List[PredictRequest]
-
 
 class ClassProbability(BaseModel):
     class_name: str
     probability: Optional[float]
-
 
 class PredictResponse(BaseModel):
     prediction: str
@@ -165,10 +161,7 @@ def predict(request: PredictRequest):
         classes = model_classes or list(getattr(model, "classes_", [])) or []
         class_probs = []
         if probabilities is not None and classes:
-            class_probs = [
-                ClassProbability(class_name=c, probability=float(p))
-                for c, p in zip(classes, probabilities)
-            ]
+            class_probs = [ClassProbability(class_name=c, probability=float(p)) for c, p in zip(classes, probabilities)]
         return PredictResponse(prediction=str(prediction_raw), class_probabilities=class_probs)
     except Exception as e:
         logger.exception("Prediction error: %s", e)
@@ -194,13 +187,7 @@ def batch_predict(request: BatchPredictRequest):
         results = []
         for i, pred in enumerate(preds):
             probs = probabilities[i].tolist() if (probabilities is not None) else None
-            if (probs is not None and classes):
-                class_probs = [
-                    ClassProbability(class_name=c, probability=float(p))
-                    for c, p in zip(classes, probs)
-                ]
-            else:
-                class_probs = []
+            class_probs = [ClassProbability(class_name=c, probability=float(p)) for c, p in zip(classes, probs)] if (probs is not None and classes) else []
             results.append(PredictResponse(prediction=str(pred), class_probabilities=class_probs))
         return results
     except Exception as e:

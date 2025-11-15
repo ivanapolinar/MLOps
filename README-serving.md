@@ -1,19 +1,6 @@
-# Steel Energy ML API - Serving Guide
+# API Serving Guide
 
 This guide provides instructions for deploying and serving the Steel Energy ML API.
-
-## Overview
-
-The Steel Energy ML API is a FastAPI-based service that provides REST endpoints for making predictions using the trained RandomForest model. The API supports both single predictions and batch predictions, and can load models from either local files or MLflow model registry.
-
-## Features
-
-- **Portable Model Loading**: Supports both local joblib files and MLflow registry URIs
-- **MLflow Integration**: Automatically detects and uses MLflow if available
-- **Feature Alignment**: Handles column name aliases and ensures proper feature ordering
-- **Batch Predictions**: Efficiently process multiple records in a single request
-- **Health & Metrics**: Built-in health check and metrics endpoints
-- **GitHub Codespaces**: Pre-configured devcontainer for instant development
 
 ## Quick Start
 
@@ -24,99 +11,95 @@ The Steel Energy ML API is a FastAPI-based service that provides REST endpoints 
    pip install -r requirements.txt
    ```
 
-2. **Serve the API (development mode with auto-reload):**
+2. **Start the API with auto-reload:**
    ```bash
    make serve-api-reload
    ```
+   The API will be available at `http://localhost:8000`
 
-3. **Access the API:**
-   - API: http://localhost:8000
-   - Interactive docs: http://localhost:8000/docs
-   - Alternative docs: http://localhost:8000/redoc
+3. **Access the interactive API docs:**
+   - Swagger UI: `http://localhost:8000/docs`
+   - ReDoc: `http://localhost:8000/redoc`
 
-### GitHub Codespaces
+### Environment Variables
 
-1. Open the repository in GitHub Codespaces
-2. The devcontainer will automatically:
-   - Set up Python 3.10 environment
-   - Install all dependencies
-   - Configure environment variables
-   - Forward ports 8000 and 5000
+Configure the API behavior using these environment variables:
 
-3. Run the API:
-   ```bash
-   make serve-api-reload
-   ```
+- `MODEL_URI`: Path to the model file (default: `models/best_rf_model.joblib`)
+  - Local path: `/path/to/model.joblib`
+  - MLflow registry: `models:/model-name/Production` or `models:/model-name/version`
+- `MODEL_VERSION`: API version string (default: `1.0.0`)
 
-## Makefile Targets
-
-### API Serving
-
-- `make serve-api` - Start API in production mode
-- `make serve-api-reload` - Start API in development mode with auto-reload
-- `make serve-api-detached` - Start API as background process
-- `make stop-api` - Stop detached API server
-
-### Docker
-
-- `make docker-build` - Build Docker image
-- `make docker-run` - Run API in Docker with local model
-- `make docker-run-mlflow` - Run API in Docker with MLflow model
-
-### Development
-
-- `make codespace-setup` - Setup Codespace environment
-- `make test` - Run tests
-- `make lint` - Run linter
-
-## Environment Variables
-
-Configure the API using these environment variables:
-
-- `MODEL_URI` - Path to model file or MLflow URI (default: `models/best_rf_model.joblib`)
-- `MODEL_VERSION` - Model version string (default: `1.0.0`)
-- `MLFLOW_TRACKING_URI` - MLflow tracking server URI (optional)
-
-### Examples
-
-**Local joblib model:**
+Example:
 ```bash
-export MODEL_URI=/path/to/models/best_rf_model.joblib
-make serve-api
+MODEL_URI=/path/to/custom_model.joblib MODEL_VERSION=2.0.0 make serve-api-reload
 ```
 
-**MLflow registry model:**
+## Deployment Options
+
+### Option 1: Docker
+
+1. **Build the Docker image:**
+   ```bash
+   make docker-build
+   ```
+
+2. **Run the container:**
+   ```bash
+   make docker-run
+   ```
+   
+3. **Run with MLflow model:**
+   ```bash
+   make docker-run-mlflow
+   ```
+
+### Option 2: GitHub Codespaces
+
+1. **Open the repository in Codespaces** from the GitHub UI
+2. **Wait for the devcontainer to build** (automatic setup)
+3. **Start the API:**
+   ```bash
+   make serve-api-reload
+   ```
+4. **Access the forwarded port 8000** in your browser
+
+The Codespaces environment is pre-configured with:
+- Python 3.10
+- All dependencies installed
+- Environment variables set
+- VS Code extensions for Python development
+
+### Option 3: Production Deployment
+
+For production deployments, use a process manager like systemd or supervisord:
+
 ```bash
-export MODEL_URI=models:/steel-energy-model/Production
-export MLFLOW_TRACKING_URI=http://mlflow-server:5000
-make serve-api
+# Start in detached mode
+make serve-api-detached
+
+# Check logs
+tail -f .api_server.log
+
+# Stop the server
+make stop-api
 ```
 
 ## API Endpoints
 
-### Health & Info
+### Health Check
+```bash
+curl http://localhost:8000/health
+```
 
-- `GET /health` - Health check
-- `GET /version` - Model version and path
-- `GET /classes` - Model output classes
-- `GET /` - Welcome message
-
-### Predictions
-
-- `POST /predict` - Single prediction
-- `POST /batch_predict` - Batch predictions
-
-### Management
-
-- `GET /metrics` - Metrics (placeholder)
-- `POST /retrain` - Retrain model (placeholder)
-
-## Example Usage
+### Version Information
+```bash
+curl http://localhost:8000/version
+```
 
 ### Single Prediction
-
 ```bash
-curl -X POST "http://localhost:8000/predict" \
+curl -X POST http://localhost:8000/predict \
   -H "Content-Type: application/json" \
   -d '{
     "Usage_kWh": 3.17,
@@ -125,7 +108,7 @@ curl -X POST "http://localhost:8000/predict" \
     "CO2(tCO2)": 0.0,
     "Lagging_Current_Power_Factor": 73.21,
     "Leading_Current_Power_Factor": 100.0,
-    "NSM": 900,
+    "NSM": 900.0,
     "mixed_type_col": 1.5,
     "WeekStatus": "Weekday",
     "Day_of_week": "Monday"
@@ -133,9 +116,8 @@ curl -X POST "http://localhost:8000/predict" \
 ```
 
 ### Batch Prediction
-
 ```bash
-curl -X POST "http://localhost:8000/batch_predict" \
+curl -X POST http://localhost:8000/batch_predict \
   -H "Content-Type: application/json" \
   -d '{
     "records": [
@@ -146,7 +128,7 @@ curl -X POST "http://localhost:8000/batch_predict" \
         "CO2(tCO2)": 0.0,
         "Lagging_Current_Power_Factor": 73.21,
         "Leading_Current_Power_Factor": 100.0,
-        "NSM": 900,
+        "NSM": 900.0,
         "mixed_type_col": 1.5,
         "WeekStatus": "Weekday",
         "Day_of_week": "Monday"
@@ -155,93 +137,64 @@ curl -X POST "http://localhost:8000/batch_predict" \
   }'
 ```
 
-## VS Code Tasks
-
-The `.vscode/tasks.json` provides quick access to common tasks:
-
-1. **Serve API (uvicorn - reload)** - Start development server
-2. **Run tests (pytest)** - Execute test suite
-
-Access tasks via `Terminal > Run Task...` or `Ctrl+Shift+P` > `Tasks: Run Task`
-
-## Deployment Considerations
-
-### Production Deployment
-
-For production deployments:
-
-1. Use `make serve-api` (without reload) for better performance
-2. Consider using a process manager like systemd or supervisor
-3. Set up a reverse proxy (nginx, traefik) for SSL/TLS
-4. Configure proper logging and monitoring
-5. Use environment-specific `.env` files
-
-### Docker Deployment
-
-Build and run using Docker:
-
+### Get Model Classes
 ```bash
-make docker-build
-make docker-run
+curl http://localhost:8000/classes
 ```
 
-For MLflow-backed deployments:
-
+### Get Metrics (placeholder)
 ```bash
-export MODEL_URI=models:/steel-energy-model/Production
-export MLFLOW_TRACKING_URI=http://mlflow-server:5000
-make docker-run-mlflow
+curl http://localhost:8000/metrics
 ```
 
-### Cloud Deployment
+## Makefile Targets
 
-The API can be deployed to various cloud platforms:
+The following Makefile targets are available for API operations:
 
-- **AWS**: Use ECS, EKS, or App Runner
-- **Azure**: Use Container Instances or App Service
-- **GCP**: Use Cloud Run or GKE
-- **Heroku**: Deploy using container registry
+- `make serve-api` - Start API with uvicorn (basic)
+- `make serve-api-reload` - Start API with auto-reload for development
+- `make serve-api-detached` - Start API in background
+- `make stop-api` - Stop background API server
+- `make docker-build` - Build Docker image
+- `make docker-run` - Run API in Docker
+- `make docker-run-mlflow` - Run API in Docker with MLflow model
+- `make codespace-setup` - Setup Codespaces environment
+
+## Testing
+
+Run the test suite:
+```bash
+make test
+```
+
+Run API-specific tests:
+```bash
+pytest src/api/test/
+```
 
 ## Troubleshooting
 
-### Model Not Found
+### Model not loading
+- Check that `models/best_rf_model.joblib` exists
+- Verify `MODEL_URI` environment variable points to valid model
+- Check logs for specific error messages
 
-If you see "Model not loaded" errors:
-
-1. Check that `MODEL_URI` points to a valid model file
-2. Verify the model file exists: `ls -la models/`
-3. Check the logs for specific error messages
-
-### Import Errors
-
-If MLflow imports fail:
-
-- The API will automatically fall back to joblib-only mode
-- MLflow is optional for local model serving
-
-### Port Already in Use
-
-If port 8000 is already in use:
-
+### Port already in use
 ```bash
 # Find process using port 8000
 lsof -i :8000
 
-# Kill the process or use a different port
-uvicorn src.api.main:app --port 8001
+# Kill the process
+kill -9 <PID>
 ```
 
-## Development Workflow
-
-1. Make code changes
-2. API auto-reloads in development mode
-3. Test endpoints using `/docs` or curl
-4. Run tests: `make test`
-5. Check linting: `make lint`
-6. Commit changes
+### MLflow model loading fails
+- Ensure MLflow is installed: `pip install mlflow`
+- Verify MLflow tracking URI is accessible
+- Check model name and version/stage in registry
 
 ## Additional Resources
 
-- FastAPI Documentation: https://fastapi.tiangolo.com/
-- MLflow Documentation: https://mlflow.org/docs/latest/
-- Uvicorn Documentation: https://www.uvicorn.org/
+- [FastAPI Documentation](https://fastapi.tiangolo.com/)
+- [MLflow Documentation](https://mlflow.org/docs/latest/index.html)
+- [Uvicorn Documentation](https://www.uvicorn.org/)
