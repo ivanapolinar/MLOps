@@ -1,16 +1,13 @@
-"""CLI para ejecutar el flujo end-to-end usando MLOpsPipeline.
-
-Pasos:
-- Procesar datos crudos → limpios.
-- Entrenar (base + tuning), evaluar y exportar artefactos.
-- Generar predicciones por lote y métricas.
-"""
+"""CLI para ejecutar el flujo end-to-end usando MLOpsPipeline."""
 
 from __future__ import annotations
 
 import os
-import click
 
+# ⚠️ Fix necesario para evitar error Tcl/Tk durante pruebas CLI
+os.environ["MPLBACKEND"] = "Agg"
+
+import click
 from src.pipeline.mlops_pipeline import MLOpsPipeline
 
 
@@ -60,33 +57,24 @@ from src.pipeline.mlops_pipeline import MLOpsPipeline
 @click.option(
     "--mlflow-uri",
     default=None,
-    help=(
-        "MLFLOW_TRACKING_URI (si se omite, se usa el valor de entorno y "
-        "configuración por defecto)"
-    ),
+    help="MLFLOW_TRACKING_URI",
 )
 @click.option(
     "--mlflow-experiment",
     default=None,
-    help=(
-        "Nombre del experimento de MLflow (si se omite, usa 'steel_energy' "
-        "o valor de entorno)"
-    ),
+    help="Nombre del experimento de MLflow",
 )
 @click.option(
     "--register/--no-register",
     default=False,
     show_default=True,
-    help=(
-        "Registrar modelo en Model Registry (requiere MLflow server con "
-        "Registry y MLFLOW_TRACKING_URI http)"
-    ),
+    help="Registrar modelo en MLflow Registry",
 )
 @click.option(
     "--registered-name",
     default=lambda: os.getenv("MLFLOW_REGISTERED_MODEL_NAME", "SteelEnergyRF"),
     show_default=True,
-    help="Nombre del modelo registrado en MLflow Registry",
+    help="Nombre del modelo registrado",
 )
 def main(
     raw_input: str,
@@ -100,7 +88,7 @@ def main(
     register: bool,
     registered_name: str,
 ):
-    # Instanciar pipeline con configuración de MLflow
+
     pipe = MLOpsPipeline(
         mlflow_tracking_uri=mlflow_uri or os.getenv("MLFLOW_TRACKING_URI"),
         mlflow_experiment=mlflow_experiment or os.getenv(
@@ -110,13 +98,8 @@ def main(
         registered_model_name=registered_name,
     )
 
-    # 1) Procesamiento crudo → limpio
     pipe.process_raw_to_clean(raw_input, clean_output)
-
-    # 2) Entrenamiento y exportación de artefactos
     pipe.run_training_pipeline(clean_output, model_path, figures)
-
-    # 3) Predicción por lote
     pipe.batch_predict(clean_output, model_path, predictions, metrics, figures)
 
 
