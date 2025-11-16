@@ -1,0 +1,27 @@
+{
+  "project": {
+    "name": "proyecto",
+    "root_parent": "."
+  },
+  "env": {
+    "python_version": "3.11",
+    "venv_name": ".venv-mlops"
+  },
+  "paths": {
+    "requirements_file": "requirements.txt",
+    "workspace_subdirs": [
+      "data",
+      "notebooks",
+      "models",
+      "reports",
+      "mlruns"
+    ]
+  },
+  "mlops": {
+    "dvc_package": "dvc[s3]==3.55.2",
+    "mlflow_package": "mlflow==3.6.0",
+    "dvc_init_flags": "--no-scm",
+    "mlflow_backend_uri": "sqlite:///mlruns.db",
+    "mlflow_artifact_uri": "mlruns"
+  }
+}

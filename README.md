@@ -32,6 +32,15 @@ Notas
   y `MLFLOW_REGISTERED_MODEL_NAME`.
 - Asegura credenciales AWS para `dvc push` si usas S3.
 
+## Inicializacion de ambientes
+
+Para reconstruir el entorno local (Python 3.11, virtualenv, dependencias base, DVC y MLflow) usa los scripts que viven en `docs/initAmbiente/`:
+
+- `init.bat` automatiza el flujo completo en Windows/PowerShell (incluye manejo de virtualenv, instalación por etapas y preparación de DVC/MLflow).
+- `init.sh` hace lo mismo en Linux o WSL.
+
+El detalle paso a paso, flags soportados y requisitos están documentados en `docs/initAmbiente/README.md`. Refiérete a ese archivo cada vez que necesites provisionar una nueva máquina o ajustar el comportamiento de los scripts.
+
 Project Organization
 ------------
 
