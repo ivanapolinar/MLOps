@@ -1,16 +1,21 @@
 import os
-import json
 import pandas as pd
 import joblib
-import matplotlib.pyplot as plt
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 import click
+import json
+import matplotlib.pyplot as plt
+from sklearn.metrics import (
+    accuracy_score,
+    classification_report,
+    confusion_matrix,
+)
 
 
 # ======================================================
 # LOAD DATASET
 # ======================================================
 def load_dataset(path: str) -> pd.DataFrame:
+    """Load CSV and parse date if present."""
     df = pd.read_csv(path)
     if "date" in df.columns:
         df["date"] = pd.to_datetime(df["date"], errors="coerce")
@@ -21,6 +26,7 @@ def load_dataset(path: str) -> pd.DataFrame:
 # PREPARE FEATURES
 # ======================================================
 def prepare_features(df: pd.DataFrame) -> pd.DataFrame:
+    """Drop columns not used by the model."""
     df = df.copy()
     for col in ["Load_Type", "date"]:
         if col in df.columns:
@@ -31,7 +37,12 @@ def prepare_features(df: pd.DataFrame) -> pd.DataFrame:
 # ======================================================
 # HELPERS NEEDED BY PIPELINE
 # ======================================================
-def ensure_dirs(preds_path: str, metrics_path: str = None, figures_dir: str = None):
+def ensure_dirs(
+    preds_path: str,
+    metrics_path: str | None = None,
+    figures_dir: str | None = None,
+) -> None:
+    """Create required directories."""
     os.makedirs(os.path.dirname(preds_path), exist_ok=True)
     if metrics_path:
         os.makedirs(os.path.dirname(metrics_path), exist_ok=True)
@@ -39,7 +50,7 @@ def ensure_dirs(preds_path: str, metrics_path: str = None, figures_dir: str = No
         os.makedirs(figures_dir, exist_ok=True)
 
 
-def attach_probabilities(model, X, out_df):
+def attach_probabilities(model, X, out_df) -> None:
     """If model has predict_proba, attach per-class probabilities."""
     if hasattr(model, "predict_proba"):
         proba = model.predict_proba(X)
@@ -47,29 +58,37 @@ def attach_probabilities(model, X, out_df):
             out_df[f"Prob_{i}"] = proba[:, i]
 
 
-def maybe_metrics_and_figures(y_true, y_pred, metrics_path, figures_dir):
+def maybe_metrics_and_figures(
+    y_true,
+    y_pred,
+    metrics_path: str,
+    figures_dir: str,
+) -> None:
     """
+    Save metrics + confusion matrix figure.
     Tests expect EXACTLY these 4 parameters.
     """
     if y_true is None:
-        # Save empty metrics
         with open(metrics_path, "w", encoding="utf-8") as f:
             json.dump({"accuracy": None, "report": {}}, f)
         return
 
-    # Compute metrics
     metrics = {
         "accuracy": accuracy_score(y_true, y_pred),
-        "report": classification_report(y_true, y_pred, output_dict=True),
+        "report": classification_report(
+            y_true,
+            y_pred,
+            output_dict=True,
+        ),
     }
 
-    # Save metrics
     with open(metrics_path, "w", encoding="utf-8") as f:
         json.dump(metrics, f, indent=4)
 
-    # Save confusion matrix figure
     os.makedirs(figures_dir, exist_ok=True)
+
     cm = confusion_matrix(y_true, y_pred)
+
     plt.figure(figsize=(5, 4))
     plt.imshow(cm, cmap="Blues")
     plt.title("Confusion Matrix")
@@ -77,9 +96,11 @@ def maybe_metrics_and_figures(y_true, y_pred, metrics_path, figures_dir):
     plt.xlabel("Predicted")
     plt.ylabel("True")
 
-    # Nombre exacto que esperan los tests
-    output_path = os.path.join(figures_dir, "confusion_matrix_predict.png")
-    plt.savefig(output_path)
+    fig_path = os.path.join(
+        figures_dir,
+        "confusion_matrix_predict.png",
+    )
+    plt.savefig(fig_path)
     plt.close()
 
 
@@ -87,24 +108,35 @@ def maybe_metrics_and_figures(y_true, y_pred, metrics_path, figures_dir):
 # BATCH PREDICTOR
 # ======================================================
 class BatchPredictor:
-    def predict_file(self, input_path: str, model_path: str,
-                     preds_path: str, metrics_path: str, figures_dir: str):
+    """Batch prediction helper used by tests."""
 
+    def predict_file(
+        self,
+        input_path: str,
+        model_path: str,
+        preds_path: str,
+        metrics_path: str,
+        figures_dir: str,
+    ) -> None:
         df = load_dataset(input_path)
         X = prepare_features(df)
 
         model = joblib.load(model_path)
         y_pred = model.predict(X)
 
-        # Save predictions
         out = df.copy()
         out["Prediction"] = y_pred
         attach_probabilities(model, X, out)
         out.to_csv(preds_path, index=False)
 
-        # Metrics & figures
         y_true = df["Load_Type"] if "Load_Type" in df.columns else None
-        maybe_metrics_and_figures(y_true, y_pred, metrics_path, figures_dir)
+
+        maybe_metrics_and_figures(
+            y_true,
+            y_pred,
+            metrics_path,
+            figures_dir,
+        )
 
 
 # ======================================================
@@ -116,8 +148,14 @@ def main():
     pass
 
 
-# Callback used by tests
-def _callback(input_path, model_path, preds_path, metrics_path, figures_dir):
+def _callback(
+    input_path,
+    model_path,
+    preds_path,
+    metrics_path,
+    figures_dir,
+):
+    """Callback used by tests."""
     BatchPredictor().predict_file(
         input_path=input_path,
         model_path=model_path,
@@ -131,7 +169,6 @@ def _callback(input_path, model_path, preds_path, metrics_path, figures_dir):
 main.callback = _callback
 
 
-# CLI entrypoint
 @main.command()
 @click.argument("input_path")
 @click.argument("model_path")
@@ -139,6 +176,7 @@ main.callback = _callback
 @click.argument("metrics_path")
 @click.argument("figures_dir")
 def cli(input_path, model_path, preds_path, metrics_path, figures_dir):
+    """CLI entrypoint."""
     _callback(input_path, model_path, preds_path, metrics_path, figures_dir)
 
 

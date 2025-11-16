@@ -1,3 +1,4 @@
+
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from typing import List
@@ -15,7 +16,7 @@ DEFAULT_MODEL_PATH = os.path.abspath(
         "..",
         "..",
         "models",
-        "best_rf_model.joblib"
+        "best_rf_model.joblib",
     )
 )
 
@@ -24,7 +25,6 @@ MODEL_PATH = os.getenv("MLOPS_MODEL_PATH", DEFAULT_MODEL_PATH)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("steel_energy_api")
-
 
 # --------------------------------------------------
 # APP
@@ -40,7 +40,7 @@ model = None
 
 
 def load_model():
-    """Carga el modelo una vez, usado tanto por FastAPI como por pytest."""
+    """Carga el modelo una vez, usado tanto por FastAPI como pytest."""
     global model
     try:
         logger.info(f"Loading model from: {MODEL_PATH}")
@@ -51,7 +51,7 @@ def load_model():
         model = None
 
 
-# Ejecutar carga de modelo incluso antes del startup-event (para pytest)
+# Ejecutar carga de modelo incluso antes del startup-event
 load_model()
 
 
@@ -62,7 +62,7 @@ def startup_event():
 
 
 # --------------------------------------------------
-# MODELOS DE REQUEST / RESPONSE
+# MODELOS REQUEST / RESPONSE
 # --------------------------------------------------
 class PredictRequest(BaseModel):
     Usage_kWh: float
@@ -106,7 +106,10 @@ def health():
 
 @app.get("/version")
 def version():
-    return {"version": MODEL_VERSION, "model_path": MODEL_PATH}
+    return {
+        "version": MODEL_VERSION,
+        "model_path": MODEL_PATH,
+    }
 
 
 @app.post("/predict", response_model=PredictResponse)
@@ -132,7 +135,7 @@ def predict(request: PredictRequest):
 
         return PredictResponse(
             prediction=str(pred),
-            class_probabilities=class_probs
+            class_probabilities=class_probs,
         )
 
     except Exception as e:
@@ -154,7 +157,6 @@ def batch_predict(request: BatchPredictRequest):
             if hasattr(model, "predict_proba")
             else [[] for _ in preds]
         )
-
         classes = list(model.classes_)
 
         results = []
@@ -166,7 +168,7 @@ def batch_predict(request: BatchPredictRequest):
             results.append(
                 PredictResponse(
                     prediction=str(pred),
-                    class_probabilities=class_probs
+                    class_probabilities=class_probs,
                 )
             )
 
@@ -179,13 +181,19 @@ def batch_predict(request: BatchPredictRequest):
 
 @app.get("/metrics")
 def metrics():
-    return {"metrics": {"requests": "not implemented", "accuracy": "not implemented"}}
+    return {
+        "metrics": {
+            "requests": "not implemented",
+            "accuracy": "not implemented",
+        }
+    }
 
 
 @app.get("/classes")
 def get_classes():
     if model is None:
         raise HTTPException(status_code=500, detail="Model not loaded")
+
     return {"classes": list(model.classes_)}
 
 

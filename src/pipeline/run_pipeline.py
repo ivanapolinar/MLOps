@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import os
-
-# ⚠️ Fix necesario para evitar error Tcl/Tk durante pruebas CLI
-os.environ["MPLBACKEND"] = "Agg"
-
 import click
 from src.pipeline.mlops_pipeline import MLOpsPipeline
+
+# Fix necesario para evitar error Tcl/Tk durante pruebas CLI
+os.environ["MPLBACKEND"] = "Agg"
 
 
 @click.command()
@@ -88,12 +87,12 @@ def main(
     register: bool,
     registered_name: str,
 ):
+    """Ejecución completa del pipeline MLOps."""
 
     pipe = MLOpsPipeline(
         mlflow_tracking_uri=mlflow_uri or os.getenv("MLFLOW_TRACKING_URI"),
-        mlflow_experiment=mlflow_experiment or os.getenv(
-            "MLFLOW_EXPERIMENT", "steel_energy"
-        ),
+        mlflow_experiment=mlflow_experiment
+        or os.getenv("MLFLOW_EXPERIMENT", "steel_energy"),
         register_in_registry=register,
         registered_model_name=registered_name,
     )
