@@ -23,7 +23,7 @@ def start_api():
             requests.get("http://localhost:8000/health")
             print("API READY!")
             break
-        except:
+        except Exception:
             time.sleep(1)
 
     yield
