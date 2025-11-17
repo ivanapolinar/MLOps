@@ -2,7 +2,6 @@
 # local package
 -e .
 
-# external requirements
 dvc
 dvc-s3
 click~=8.1.8
@@ -28,5 +27,7 @@ tensorflow>=2.0
 tensorflow_probability
 tf_keras
 evidently==0.7.16
+"@
+
 
 
