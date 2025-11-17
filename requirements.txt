@@ -1,4 +1,4 @@
-# Serving / API
+﻿# Serving / API
 fastapi==0.95.2
 uvicorn[standard]==0.24.0
 pydantic==1.10.11
@@ -32,6 +32,6 @@ pytest==7.4.0
 flake8==6.1.0
 coverage==7.5.0
 Sphinx==7.3.1
-awscli==1.27.169
+awscli>=1.27,<2
 setuptools>=65.0.0
 evidently==0.7.16
