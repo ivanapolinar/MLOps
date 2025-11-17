@@ -16,6 +16,12 @@ PROJECT_NAME = steel_energy
 PYTHON_INTERPRETER = python3
 REQ_CACHE_DIR := .cache
 REQ_STAMP := $(REQ_CACHE_DIR)/requirements.stamp
+DOCKER_IMAGE_NAME ?= ml-service
+DOCKER_IMAGE_TAG ?= 1.0.0
+DOCKER_REGISTRY_USER ?= $(DOCKERHUB_USER)
+DOCKER_TEST_CONTAINER ?= ml-service-test
+DOCKER_FULL_IMAGE = $(DOCKER_REGISTRY_USER)/$(DOCKER_IMAGE_NAME):$(DOCKER_IMAGE_TAG)
+PREDICT_SAMPLE_PAYLOAD := {"Usage_kWh":1000,"Lagging_Current_Reactive.Power_kVarh":50,"Leading_Current_Reactive_Power_kVarh":20,"CO2(tCO2)":5,"Lagging_Current_Power_Factor":0.95,"Leading_Current_Power_Factor":0.9,"NSM":2000,"mixed_type_col":1,"WeekStatus":"WEEKDAY","Day_of_week":"MONDAY"}
 
 ifeq (,$(shell which conda))
 HAS_CONDA=False
@@ -218,6 +224,8 @@ pipeline-deploy: requirements
 	}
 	@echo ">>> git push"
 	@git push || { echo "✖ git push falló"; exit 1; }
+	@echo ">>> Construyendo, publicando y validando imagen Docker"
+	@$(MAKE) docker-release
 
 ## Subir datos a S3
 sync_data_to_s3:
@@ -234,6 +242,46 @@ ifeq (default,$(PROFILE))
 else
 	aws s3 sync s3://$(BUCKET)/data/ data/ --profile $(PROFILE)
 endif
+
+.PHONY: docker-release
+## Construir, publicar y validar la imagen de la API en Docker Hub
+docker-release:
+	@if [ -z "$(DOCKER_REGISTRY_USER)" ]; then \
+		echo "ERROR: Define DOCKER_REGISTRY_USER con tu usuario de Docker Hub (export DOCKER_REGISTRY_USER=ivan2909)"; \
+		exit 1; \
+	fi
+	@echo ">>> Construyendo imagen local $(DOCKER_IMAGE_NAME):$(DOCKER_IMAGE_TAG)"
+	docker build -t $(DOCKER_IMAGE_NAME):$(DOCKER_IMAGE_TAG) .
+	@echo ">>> Etiquetando como $(DOCKER_FULL_IMAGE)"
+	docker tag $(DOCKER_IMAGE_NAME):$(DOCKER_IMAGE_TAG) $(DOCKER_FULL_IMAGE)
+	@echo ">>> Publicando en Docker Hub (requiere docker login)"
+	docker push $(DOCKER_FULL_IMAGE)
+	@echo ">>> Validando push con docker pull"
+	docker pull $(DOCKER_FULL_IMAGE)
+	@echo ">>> Desplegando contenedor temporal $(DOCKER_TEST_CONTAINER)"
+	-@docker rm -f $(DOCKER_TEST_CONTAINER) >/dev/null 2>&1 || true
+	docker run -d --rm --name $(DOCKER_TEST_CONTAINER) -p 8000:8000 $(DOCKER_FULL_IMAGE)
+	@echo ">>> Esperando a que la API responda en http://localhost:8000 ..."
+	@for i in $$(seq 1 20); do \
+		if curl --silent --fail http://localhost:8000/health >/dev/null 2>&1; then \
+			echo ">>> API disponible (intento $$i)"; \
+			break; \
+		fi; \
+		if [ $$i -eq 20 ]; then \
+			echo "ERROR: API no respondio tras 20 intentos"; \
+			docker logs $(DOCKER_TEST_CONTAINER) || true; \
+			docker stop $(DOCKER_TEST_CONTAINER) || true; \
+			exit 1; \
+		fi; \
+		sleep 2; \
+	done
+	@echo ">>> Health check (respuesta debe ser status=ok):"
+	curl --fail http://localhost:8000/health
+	@echo ">>> Prueba de prediccion:"
+	curl --fail -X POST http://localhost:8000/predict \
+	  -H "Content-Type: application/json" \
+	  -d '$(PREDICT_SAMPLE_PAYLOAD)'
+	docker stop $(DOCKER_TEST_CONTAINER)
 
 ## Versionar archivos con DVC
 dvc_commit:
