@@ -19,6 +19,131 @@ import mlflow
 import mlflow.sklearn as mlflow_sklearn
 
 
+class SweepRunner:
+    """Ejecuta un barrido de hiperparámetros y registra en MLflow.
+
+    Permite inyectar una grilla personalizada; por defecto usa
+    `param_grid_default()`. Mantiene compatibilidad con el comando CLI y tests.
+    """
+
+    def run(
+        self,
+        input_path: str,
+        model_out: str,
+        figures_dir: str,
+        grid: Dict[str, List] | None = None,
+    ):
+        os.makedirs(os.path.dirname(model_out), exist_ok=True)
+        os.makedirs(figures_dir, exist_ok=True)
+
+        ensure_mlflow_from_env()
+
+        df = load_data(input_path)
+        X_train, X_test, y_train, y_test = split_data(df)
+        preprocessing, num_cols, cat_cols = build_preprocessing(X_train)
+
+        grid = grid or param_grid_default()
+        candidates = expand_grid(grid)
+
+        best_acc = -np.inf
+        best_model = None
+        best_params = None
+        best_fig = None
+
+        for i, params in enumerate(candidates, start=1):
+            run_name = (
+                "sweep_rf_"
+                f"{i}_"
+                f"{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}"
+            )
+            with mlflow.start_run(run_name=run_name):
+                safe_params = {
+                    k: v for k, v in params.items() if k != "random_state"
+                }
+                mlflow.log_params(safe_params)
+                model = train_base_model(
+                    X_train, y_train, preprocessing, safe_params
+                )
+                acc, fig_path, _ = evaluate_model(
+                    model,
+                    X_test,
+                    y_test,
+                    figures_dir,
+                    name=run_name,
+                )
+                mlflow.log_metric("accuracy", float(acc))
+                if fig_path:
+                    mlflow.log_artifact(fig_path)
+
+                if acc > best_acc:
+                    best_acc = acc
+                    best_model = model
+                    best_params = params
+                    best_fig = fig_path
+
+        if best_model is None:
+            raise RuntimeError(
+                "No se pudo entrenar ningún modelo en el barrido."
+            )
+
+        with mlflow.start_run(run_name="sweep_rf_best"):
+            mlflow.log_params(
+                {f"best__{k}": v for k, v in best_params.items()}
+            )
+            mlflow.log_metric("best_accuracy", float(best_acc))
+            if best_fig:
+                mlflow.log_artifact(best_fig)
+
+            fi_csv, top_png = save_feature_importance(
+                best_model,
+                num_cols,
+                cat_cols,
+                figures_dir,
+            )
+            mlflow.log_artifact(fi_csv)
+            mlflow.log_artifact(top_png)
+            save_model(best_model, model_out)
+
+            try:
+                example = X_test[:2].copy()
+                int_cols = list(
+                    example.select_dtypes(include="integer").columns
+                )
+                if int_cols:
+                    example[int_cols] = example[int_cols].astype("float64")
+                register_flag = (
+                    os.getenv("MLFLOW_REGISTER_IN_REGISTRY", "false")
+                    .lower() == "true"
+                )
+                tracking_uri = mlflow.get_tracking_uri() or ""
+                if register_flag and tracking_uri.startswith("http"):
+                    mlflow_sklearn.log_model(
+                        best_model,
+                        name="model",
+                        input_example=example,
+                        signature=mlflow.models.infer_signature(
+                            example,
+                            best_model.predict(example),
+                        ),
+                        registered_model_name=os.getenv(
+                            "MLFLOW_REGISTERED_MODEL_NAME",
+                            "SteelEnergyRF",
+                        ),
+                    )
+                else:
+                    mlflow_sklearn.log_model(
+                        best_model,
+                        name="model",
+                        input_example=example,
+                        signature=mlflow.models.infer_signature(
+                            example,
+                            best_model.predict(example),
+                        ),
+                    )
+            except Exception:
+                pass
+
+
 def ensure_mlflow_from_env():
     """Configura MLflow (tracking y experimento) desde variables de entorno."""
     tracking_uri = os.getenv("MLFLOW_TRACKING_URI")
@@ -70,114 +195,8 @@ def main(input_path: str, model_out: str, figures_dir: str):
     - Selecciona la mejor combinación por accuracy y guarda el modelo.
     - Exporta importancia de variables del mejor modelo.
     """
-    os.makedirs(os.path.dirname(model_out), exist_ok=True)
-    os.makedirs(figures_dir, exist_ok=True)
-
-    ensure_mlflow_from_env()
-
-    df = load_data(input_path)
-    X_train, X_test, y_train, y_test = split_data(df)
-    preprocessing, num_cols, cat_cols = build_preprocessing(X_train)
-
-    grid = param_grid_default()
-    candidates = expand_grid(grid)
-
-    best_acc = -np.inf
-    best_model = None
-    best_params = None
-    best_fig = None
-
-    for i, params in enumerate(candidates, start=1):
-        run_name = (
-            "sweep_rf_"
-            f"{i}_"
-            f"{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}"
-        )
-        with mlflow.start_run(run_name=run_name):
-            # Evitar duplicar random_state (ya se fija en train_base_model)
-            safe_params = {
-                k: v for k, v in params.items() if k != "random_state"
-            }
-            mlflow.log_params(safe_params)
-            model = train_base_model(
-                X_train, y_train, preprocessing, safe_params
-            )
-            acc, fig_path, report = evaluate_model(
-                model,
-                X_test,
-                y_test,
-                figures_dir,
-                name=run_name,
-            )
-            mlflow.log_metric("accuracy", float(acc))
-            if fig_path:
-                mlflow.log_artifact(fig_path)
-
-            if acc > best_acc:
-                best_acc = acc
-                best_model = model
-                best_params = params
-                best_fig = fig_path
-
-    if best_model is None:
-        raise RuntimeError("No se pudo entrenar ningún modelo en el barrido.")
-
-    # Log final del mejor
-    with mlflow.start_run(run_name="sweep_rf_best"):
-        mlflow.log_params({f"best__{k}": v for k, v in best_params.items()})
-        mlflow.log_metric("best_accuracy", float(best_acc))
-        if best_fig:
-            mlflow.log_artifact(best_fig)
-
-        # Importancia de variables y guardado del modelo
-        fi_csv, top_png = save_feature_importance(
-            best_model,
-            num_cols,
-            cat_cols,
-            figures_dir,
-        )
-        mlflow.log_artifact(fi_csv)
-        mlflow.log_artifact(top_png)
-        save_model(best_model, model_out)
-
-        # Registro de modelo en MLflow Model Registry (opcional)
-        try:
-            # Evitar warning de esquema de MLflow con columnas enteras sin NAs
-            example = X_test[:2].copy()
-            int_cols = list(example.select_dtypes(include="integer").columns)
-            if int_cols:
-                example[int_cols] = example[int_cols].astype("float64")
-            register_flag = (
-                os.getenv("MLFLOW_REGISTER_IN_REGISTRY", "false")
-                .lower() == "true"
-            )
-            tracking_uri = mlflow.get_tracking_uri() or ""
-            if register_flag and tracking_uri.startswith("http"):
-                mlflow_sklearn.log_model(
-                    best_model,
-                    artifact_path="model",
-                    input_example=example,
-                    signature=mlflow.models.infer_signature(
-                        example,
-                        best_model.predict(example),
-                    ),
-                    registered_model_name=os.getenv(
-                        "MLFLOW_REGISTERED_MODEL_NAME",
-                        "SteelEnergyRF",
-                    ),
-                )
-            else:
-                mlflow_sklearn.log_model(
-                    best_model,
-                    artifact_path="model",
-                    input_example=example,
-                    signature=mlflow.models.infer_signature(
-                        example,
-                        best_model.predict(example),
-                    ),
-                )
-        except Exception:
-            pass
+    # Delegar la lógica al ejecutor de barridos
+    SweepRunner().run(input_path, model_out, figures_dir)
 
 
 if __name__ == "__main__":

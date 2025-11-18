@@ -106,6 +106,119 @@ env-init:
 sweep: requirements
 	$(PYTHON_INTERPRETER) src/models/sweep.py data/clean/steel_energy_clean.csv models/best_rf_model_sweep.joblib reports/figures
 
+## Ejecutar el pipeline end-to-end con la clase MLOpsPipeline
+pipeline-class: requirements
+	@echo ">>> Ejecutando pruebas unitarias (pytest)"
+		@MPLBACKEND=Agg $(PYTHON_INTERPRETER) -m pytest -q tests/ || { \
+		echo "✖ Pruebas fallaron. Abortando pipeline-class."; \
+		exit 1; \
+	}
+		@echo "✔ Pruebas aprobadas. Ejecutando pipeline end-to-end"
+		MPLBACKEND=Agg $(PYTHON_INTERPRETER) src/pipeline/run_pipeline.py \
+			--raw-input data/raw/steel_energy_modified.csv \
+			--clean-output data/clean/steel_energy_clean.csv \
+			--model-path models/final_model.joblib \
+			--predictions reports/predictions.csv \
+			--metrics reports/metrics.json \
+			--figures reports/figures \
+			--mlflow-uri "$${MLFLOW_TRACKING_URI}" \
+			--mlflow-experiment "$${MLFLOW_EXPERIMENT}" \
+			$(if $(filter true,$(MLFLOW_REGISTER_IN_REGISTRY)),--register,) \
+			--registered-name "$(MLFLOW_REGISTERED_MODEL_NAME)"
+		@echo ">>> Ejecutando pruebas de API (levantar servidor, validar endpoints)"
+		@MODEL_PATH=$$( [ -f models/final_model.joblib ] && echo models/final_model.joblib || echo models/best_rf_model.joblib ); \
+		MLOPS_MODEL_PATH="$$MODEL_PATH" nohup $(PYTHON_INTERPRETER) -m uvicorn src.api.main:app --host 0.0.0.0 --port 8000 > .api_server.log 2>&1 & echo $$! > .api_server.pid; \
+		echo ">>> Esperando a que la API esté disponible..."; \
+		for i in $$(seq 1 30); do \
+			curl -sSf http://localhost:8000/health >/dev/null 2>&1 && { echo "API lista"; break; } || true; \
+			sleep 1; \
+			if [ $$i -eq 30 ]; then echo "✖ La API no respondió a tiempo"; kill $$(cat .api_server.pid) || true; exit 1; fi; \
+		done; \
+		MLOPS_MODEL_PATH="$$MODEL_PATH" MPLBACKEND=Agg $(PYTHON_INTERPRETER) -m pytest -q src/api/test/ || { echo "✖ Pruebas de API fallaron"; kill $$(cat .api_server.pid) || true; exit 1; }; \
+			kill $$(cat .api_server.pid) || true; rm -f .api_server.pid
+
+## Sincronizar cambios remotos y verificar ejecutando el pipeline (sin versionar)
+prepare-update: requirements
+	@echo ">>> Preparando entorno: sincronizar Git y DVC y validar pipeline"
+	@echo ">>> Verificando cambios locales (stash temporal si aplica)"
+	@if ! git diff --quiet || ! git diff --cached --quiet; then \
+		echo ">>> Cambios locales detectados. Ejecutando: git stash push -u"; \
+		git stash push -u -m "auto-stash prepare-update" && echo 1 > .git_autostash_prepare || { echo "✖ No se pudo crear stash"; exit 1; }; \
+	else \
+		echo ">>> No hay cambios locales"; \
+	fi
+	@echo ">>> git pull (solo fast-forward; NO_PULL=true para omitir)"
+	@if [ "$${NO_PULL}" != "true" ]; then \
+		git pull --ff-only || { echo "✖ git pull --ff-only falló (historial divergente). Resuelve manualmente y reintenta"; exit 1; }; \
+	else \
+		echo ">>> NO_PULL=true: omitiendo git pull"; \
+	fi
+	@echo ">>> dvc pull (condicional/limitado)"
+	@if [ -f dvc.lock ] && [ "$${NO_PULL}" != "true" ]; then \
+		echo ">>> dvc.lock encontrado: realizando pull limitado de artefactos .dvc (datos y modelo)"; \
+		dvc pull data/raw/steel_energy_modified.csv.dvc data/raw/steel_energy_original.csv.dvc 2>/dev/null || true; \
+		dvc pull data/interim/steel_energy_modified.csv.dvc 2>/dev/null || true; \
+		dvc pull models/final_model.joblib.dvc 2>/dev/null || true; \
+		dvc pull data/processed/steel_energy_clean.csv.dvc 2>/dev/null || true; \
+	else \
+		echo ">>> dvc.lock no existe o NO_PULL=true: omitiendo dvc pull"; \
+	fi
+	@echo ">>> Ejecutando pipeline-class para validar estado (tests + entrenamiento + pruebas API)"
+	@$(MAKE) pipeline-class || { echo "✖ pipeline-class falló"; [ -f .git_autostash_prepare ] && git stash pop || true; rm -f .git_autostash_prepare; exit 1; }
+	@echo ">>> Restaurando cambios locales previos (si se generó stash)"
+	@if [ -f .git_autostash_prepare ]; then \
+		git stash pop || { echo "✖ Conflictos al aplicar stash; resuélvelos y reintenta"; rm -f .git_autostash_prepare; exit 1; }; \
+		rm -f .git_autostash_prepare; \
+	fi
+
+## Flujo completo: pull de Git y DVC, ejecutar pipeline, subir artefactos a DVC (S3) y Git
+pipeline-deploy: requirements
+	@echo ">>> dvc pull (condicional/limitado)"
+	@if [ -f dvc.lock ] && [ "$${NO_PULL}" != "true" ]; then \
+		echo ">>> dvc.lock encontrado: realizando pull limitado de artefactos .dvc (datos y modelo)"; \
+		# Pull limitado para evitar fallas por outs de stages sin cache (reports/, best_rf_model.joblib) \
+		# Ignora errores si alguna ruta no existe aún \
+		dvc pull data/raw/steel_energy_modified.csv.dvc data/raw/steel_energy_original.csv.dvc 2>/dev/null || true; \
+		dvc pull data/interim/steel_energy_modified.csv.dvc 2>/dev/null || true; \
+		dvc pull models/final_model.joblib.dvc 2>/dev/null || true; \
+		dvc pull data/processed/steel_energy_clean.csv.dvc 2>/dev/null || true; \
+	else \
+		echo ">>> dvc.lock no existe o NO_PULL=true: omitiendo dvc pull"; \
+	fi
+	@echo ">>> Ejecutando pipeline-class (tests + entrenamiento + predicción)"
+	@$(MAKE) pipeline-class || { echo "✖ pipeline-class falló"; exit 1; }
+		@echo ">>> Alineando outs DVC y versionando (commit sin repro)"
+		@[ -f models/final_model.joblib ] && cp -f models/final_model.joblib models/best_rf_model.joblib || true
+		@dvc commit -f data/clean/steel_energy_clean.csv reports/figures reports/predictions.csv reports/metrics.json models/best_rf_model.joblib || true
+		@echo ">>> Asegurando que outs no estén rastreados por Git (untrack si aplica)"
+		@{ git ls-files --error-unmatch reports/figures >/dev/null 2>&1 && git rm -r --cached reports/figures || true; } \
+		 && { git ls-files --error-unmatch reports/predictions.csv >/dev/null 2>&1 && git rm --cached reports/predictions.csv || true; } \
+		 && { git ls-files --error-unmatch reports/metrics.json >/dev/null 2>&1 && git rm --cached reports/metrics.json || true; } \
+		 && { git ls-files --error-unmatch data/clean/steel_energy_clean.csv >/dev/null 2>&1 && git rm --cached data/clean/steel_energy_clean.csv || true; } || true
+		@echo ">>> Asegurando que datasets bajo data/ no estén en Git (untrack si aplica)"
+		@{ git ls-files --error-unmatch data/raw/steel_energy_modified.csv >/dev/null 2>&1 && git rm --cached data/raw/steel_energy_modified.csv || true; } \
+		 && { git ls-files --error-unmatch data/raw/steel_energy_original.csv >/dev/null 2>&1 && git rm --cached data/raw/steel_energy_original.csv || true; } \
+		 && { git ls-files --error-unmatch data/interim/steel_energy_modified.csv >/dev/null 2>&1 && git rm --cached data/interim/steel_energy_modified.csv || true; } || true
+		@echo ">>> Añadiendo datasets base a DVC (.dvc en data/raw/ y opcional en data/interim/)"
+		@dvc add data/raw/steel_energy_modified.csv || true
+		@dvc add data/raw/steel_energy_original.csv || true
+		@dvc add data/interim/steel_energy_modified.csv || true
+		@echo ">>> Publicando dataset limpio como artefacto DVC independiente (data/processed/steel_energy_clean.csv)"
+		@mkdir -p data/processed
+		@cp -f data/clean/steel_energy_clean.csv data/processed/steel_energy_clean.csv || true
+		@dvc add data/processed/steel_energy_clean.csv || true
+		@echo ">>> dvc push (requiere credenciales válidas si es S3)"
+		@dvc push || { echo "✖ dvc push falló"; exit 1; }
+		@echo ">>> Preparando commit en Git (dvc.lock, .dvc y cambios)"
+		@git add -A
+	@{ \
+	  MSG="$(msg)"; \
+	  if [ -z "$$MSG" ]; then MSG="Auto: pipeline artifacts update"; fi; \
+	  git commit -m "$$MSG" || echo "(i) Nada que commitear"; \
+	}
+	@echo ">>> git push"
+	@git push || { echo "✖ git push falló"; exit 1; }
+
 ## Subir datos a S3
 sync_data_to_s3:
 ifeq (default,$(PROFILE))
@@ -172,10 +285,6 @@ endif
 ## Probar que el entorno de Python está correctamente configurado
 test_environment:
 	$(PYTHON_INTERPRETER) test_environment.py
-
-## Start the API
-serve-api:
-	uvicorn src.api.main:app --reload --port 8000
 
 #################################################################################
 # REGLAS DEL PROYECTO                                                            #

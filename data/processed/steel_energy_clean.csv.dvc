@@ -1,0 +1,6 @@
+outs:
+- md5: 5f113c44c273d729d64539aabc74e7d8
+  size: 3423392
+  isexec: true
+  hash: md5
+  path: steel_energy_clean.csv

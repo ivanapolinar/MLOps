@@ -1,3 +1,4 @@
+
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from typing import List
@@ -6,40 +7,67 @@ import pandas as pd
 import logging
 import os
 
-MODEL_PATH = os.path.join(
-    os.path.dirname(__file__),
-    "..",
-    "..",
-    "models",
-    "best_rf_model.joblib"
-)
-MODEL_PATH = os.path.abspath(MODEL_PATH)
 MODEL_VERSION = "1.0.0"
+
+# Ruta por defecto del modelo
+DEFAULT_MODEL_PATH = os.path.abspath(
+    os.path.join(
+        os.path.dirname(__file__),
+        "..",
+        "..",
+        "models",
+        "best_rf_model.joblib",
+    )
+)
+
+# Pytest puede sobrescribirla
+MODEL_PATH = os.getenv("MLOPS_MODEL_PATH", DEFAULT_MODEL_PATH)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("steel_energy_api")
 
-
-try:
-    model = joblib.load(MODEL_PATH)
-    logger.info(f"Model loaded from {MODEL_PATH}")
-except Exception as e:
-    model = None
-    logger.error(f"Could not load model: {e}")
-
-
+# --------------------------------------------------
+# APP
+# --------------------------------------------------
 app = FastAPI(
     title="Steel Energy ML API",
-    description="API for steel energy RandomForest ML model",
+    description="API exposing RandomForest predictions",
     version=MODEL_VERSION,
 )
 
+# MODELO GLOBAL
+model = None
 
+
+def load_model():
+    """Carga el modelo una vez, usado tanto por FastAPI como pytest."""
+    global model
+    try:
+        logger.info(f"Loading model from: {MODEL_PATH}")
+        model = joblib.load(MODEL_PATH)
+        logger.info("Model loaded successfully")
+    except Exception as e:
+        logger.error(f"Could not load model: {e}")
+        model = None
+
+
+# Ejecutar carga de modelo incluso antes del startup-event
+load_model()
+
+
+@app.on_event("startup")
+def startup_event():
+    """Garantiza carga del modelo también en servidor real."""
+    load_model()
+
+
+# --------------------------------------------------
+# MODELOS REQUEST / RESPONSE
+# --------------------------------------------------
 class PredictRequest(BaseModel):
     Usage_kWh: float
     Lagging_Current_Reactive_Power_kVarh: float = Field(
-        ...,
-        alias="Lagging_Current_Reactive.Power_kVarh"
+        ..., alias="Lagging_Current_Reactive.Power_kVarh"
     )
     Leading_Current_Reactive_Power_kVarh: float
     CO2_tCO2: float = Field(..., alias="CO2(tCO2)")
@@ -65,39 +93,52 @@ class PredictResponse(BaseModel):
     class_probabilities: List[ClassProbability]
 
 
+# --------------------------------------------------
+# ENDPOINTS
+# --------------------------------------------------
 @app.get("/health")
 def health():
-    status = "ok" if model is not None else "error"
-    return {"status": status, "model_loaded": model is not None}
+    return {
+        "status": "ok" if model is not None else "error",
+        "model_loaded": model is not None,
+    }
 
 
 @app.get("/version")
 def version():
-    return {"version": MODEL_VERSION}
+    return {
+        "version": MODEL_VERSION,
+        "model_path": MODEL_PATH,
+    }
 
 
 @app.post("/predict", response_model=PredictResponse)
 def predict(request: PredictRequest):
     if model is None:
         raise HTTPException(status_code=500, detail="Model not loaded")
-    input_dict = request.dict(by_alias=True)
-    df = pd.DataFrame([input_dict])
+
+    df = pd.DataFrame([request.dict(by_alias=True)])
+
     try:
-        prediction = model.predict(df)[0]
-        probabilities = model.predict_proba(df)[0].tolist() \
-            if hasattr(model, "predict_proba") \
-            else None
+        pred = model.predict(df)[0]
+        prob = (
+            model.predict_proba(df)[0].tolist()
+            if hasattr(model, "predict_proba")
+            else []
+        )
         classes = list(model.classes_)
+
         class_probs = [
             ClassProbability(class_name=c, probability=p)
-            for c, p in zip(classes, probabilities)
+            for c, p in zip(classes, prob)
         ]
+
         return PredictResponse(
-            prediction=str(prediction),
-            class_probabilities=class_probs
+            prediction=str(pred),
+            class_probabilities=class_probs,
         )
+
     except Exception as e:
-        print(f"Prediction error: {e}")
         logger.error(f"Prediction error: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -106,40 +147,53 @@ def predict(request: PredictRequest):
 def batch_predict(request: BatchPredictRequest):
     if model is None:
         raise HTTPException(status_code=500, detail="Model not loaded")
+
     df = pd.DataFrame([r.dict(by_alias=True) for r in request.records])
+
     try:
-        predictions = model.predict(df).tolist()
-        probabilities = model.predict_proba(df).tolist() \
-            if hasattr(model, "predict_proba") \
-            else [None] * len(predictions)
+        preds = model.predict(df).tolist()
+        probas = (
+            model.predict_proba(df).tolist()
+            if hasattr(model, "predict_proba")
+            else [[] for _ in preds]
+        )
         classes = list(model.classes_)
-        result = [
-            PredictResponse(
-                prediction=str(pred),
-                class_probabilities=[
-                    ClassProbability(class_name=c, probability=p)
-                    for c, p in zip(classes, prob)
-                ]
+
+        results = []
+        for pred, prob in zip(preds, probas):
+            class_probs = [
+                ClassProbability(class_name=c, probability=p)
+                for c, p in zip(classes, prob)
+            ]
+            results.append(
+                PredictResponse(
+                    prediction=str(pred),
+                    class_probabilities=class_probs,
+                )
             )
-            for pred, prob in zip(predictions, probabilities)
-        ]
-        return result
+
+        return results
+
     except Exception as e:
-        print(f"Prediction error: {e}")
         logger.error(f"Batch prediction error: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.get("/metrics")
 def metrics():
-    return {"metrics": {
-        "requests": "not implemented",
-        "accuracy": "not implemented",
-    }}
+    return {
+        "metrics": {
+            "requests": "not implemented",
+            "accuracy": "not implemented",
+        }
+    }
 
 
 @app.get("/classes")
 def get_classes():
+    if model is None:
+        raise HTTPException(status_code=500, detail="Model not loaded")
+
     return {"classes": list(model.classes_)}
 
 

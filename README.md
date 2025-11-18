@@ -1,5 +1,37 @@
 # MLOps
 
+Comandos Rápidos
+----------------
+
+- `make pipeline-class`
+  - Ejecuta pruebas unitarias (solo `tests/`).
+  - Corre el pipeline end-to-end con la clase `MLOpsPipeline`:
+    limpia datos, entrena (base + tuning), registra/loguea en MLflow,
+    y genera evidencias en `reports/`.
+  - Levanta la API (`uvicorn`), valida endpoints con pruebas de API y
+    detiene el servidor automáticamente.
+
+- `make pipeline-deploy msg="TuNombre: descripción"`
+  - Actualiza el repo y datos: `git pull --rebase` y `dvc pull`.
+  - Ejecuta `pipeline-class` (tests + pipeline + pruebas de API).
+  - Versiona y envía artefactos a DVC remoto (p. ej., S3): `dvc add/push`
+    para `data/clean/steel_energy_clean.csv` y `models/final_model.joblib`.
+  - Sube cambios a Git: `git add/commit/push` (usa `msg` si se indica,
+    o un mensaje por defecto si no).
+
+- `make prepare-update`
+  - Prepara tu entorno local antes de trabajar: hace `git pull --ff-only`
+    (o usa `NO_PULL=true` para omitir), `dvc pull` limitado (solo .dvc de datos
+    y modelo si existe `dvc.lock`) y ejecuta `pipeline-class` para validar que
+    todo corre correctamente con lo último del remoto. Restaura tus cambios
+    locales (stash) al finalizar. No versiona ni sube artefactos.
+
+Notas
+- Para registrar en el Model Registry de MLflow, exporta variables de entorno:
+  `MLFLOW_TRACKING_URI`, `MLFLOW_EXPERIMENT`, `MLFLOW_REGISTER_IN_REGISTRY=true`
+  y `MLFLOW_REGISTERED_MODEL_NAME`.
+- Asegura credenciales AWS para `dvc push` si usas S3.
+
 Project Organization
 ------------
 

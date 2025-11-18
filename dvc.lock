@@ -1,0 +1,122 @@
+schema: '2.0'
+stages:
+  preprocess:
+    cmd: python src/data/make_dataset.py data/raw/steel_energy_modified.csv 
+      data/clean/steel_energy_clean.csv
+    deps:
+    - path: data/raw/steel_energy_modified.csv
+      hash: md5
+      md5: 066018aa01ed991bf060cdfe01c15834
+      size: 3157634
+    - path: src/data/make_dataset.py
+      hash: md5
+      md5: 20bd69dfafdbb5c6498e51dfb1b39152
+      size: 6516
+    outs:
+    - path: data/clean/steel_energy_clean.csv
+      hash: md5
+      md5: f261b2ee44355b2583c1569800ee9c86
+      size: 3458805
+  train:
+    cmd: python src/models/train_model.py data/clean/steel_energy_clean.csv 
+      models/best_rf_model.joblib reports/figures
+    deps:
+    - path: data/clean/steel_energy_clean.csv
+      hash: md5
+      md5: f261b2ee44355b2583c1569800ee9c86
+      size: 3458805
+    - path: src/models/train_model.py
+      hash: md5
+      md5: 5a4273330d08bf72abbf4100659569b1
+      size: 21724
+    outs:
+    - path: models/best_rf_model.joblib
+      hash: md5
+      md5: d47e4be156536aabb9fe3b131fd70107
+      size: 28221475
+    - path: reports/figures
+      hash: md5
+      md5: a798a05a3be49f4000d77e056e23ea6d.dir
+      size: 98153
+      nfiles: 4
+  predict:
+    cmd: python src/models/predict_model.py data/clean/steel_energy_clean.csv 
+      models/best_rf_model.joblib reports/predictions.csv reports/metrics.json 
+      reports/figures
+    deps:
+    - path: data/clean/steel_energy_clean.csv
+      hash: md5
+      md5: f261b2ee44355b2583c1569800ee9c86
+      size: 3458805
+    - path: models/best_rf_model.joblib
+      hash: md5
+      md5: d47e4be156536aabb9fe3b131fd70107
+      size: 28221475
+    - path: src/models/predict_model.py
+      hash: md5
+      md5: aa72fea4c23245c001c0c523d9ee5685
+      size: 4987
+    outs:
+    - path: reports/metrics.json
+      hash: md5
+      md5: bded0912252582485162ce9b381dd1fe
+      size: 949
+    - path: reports/predictions.csv
+      hash: md5
+      md5: 39a91ce28e08b9340c421203cce63517
+      size: 5400176
+  evaluate:
+    cmd: python src/models/evaluate_drift.py data/clean/steel_energy_clean.csv 
+      data/clean/steel_energy_clean.csv Usage_kWh models/best_rf_model.joblib 
+      reports/
+    deps:
+    - path: data/clean/steel_energy_clean.csv
+      hash: md5
+      md5: f261b2ee44355b2583c1569800ee9c86
+      size: 3458805
+    - path: models/best_rf_model.joblib
+      hash: md5
+      md5: d47e4be156536aabb9fe3b131fd70107
+      size: 28221475
+    - path: src/models/evaluate_drift.py
+      hash: md5
+      md5: 5110e16c6821b7b162805abcb1c5b424
+      size: 7893
+    outs:
+    - path: reports/kde_plot_evaluate_Usage_kWh.png
+      hash: md5
+      md5: 9fbdbb50930446a9fbce909ca4f4f528
+      size: 33486
+  simulate:
+    cmd: python src/models/evaluate_drift.py data/clean/steel_energy_clean.csv 
+      data/clean/steel_energy_clean.csv Usage_kWh models/best_rf_model.joblib 
+      reports/ True
+    deps:
+    - path: data/clean/steel_energy_clean.csv
+      hash: md5
+      md5: f261b2ee44355b2583c1569800ee9c86
+      size: 3458805
+    - path: models/best_rf_model.joblib
+      hash: md5
+      md5: d47e4be156536aabb9fe3b131fd70107
+      size: 28221475
+    - path: src/models/evaluate_drift.py
+      hash: md5
+      md5: 5110e16c6821b7b162805abcb1c5b424
+      size: 7893
+  monitor:
+    cmd: python src/monitoring/monitor_data.py
+    deps:
+    - path: data/clean/steel_energy_clean.csv
+      hash: md5
+      md5: f261b2ee44355b2583c1569800ee9c86
+      size: 3458805
+    - path: src/monitoring/monitor_data.py
+      hash: md5
+      md5: 0b8abc478629bb4742a44657d974fe96
+      size: 797
+    outs:
+    - path: reports/monitoring/data_drift_report.html
+      hash: md5
+      md5: 50ddbb97a8c4744f7ab65c1b40ed8bcd
+      size: 10058259
