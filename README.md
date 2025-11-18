@@ -35,6 +35,7 @@ Notas
   y `MLFLOW_REGISTERED_MODEL_NAME`.
 - Asegura credenciales AWS para `dvc push` si usas S3.
 
+
 ## Inicializacion de ambientes
 
 Para reconstruir el entorno local (Python 3.11, virtualenv, dependencias base, DVC y MLflow) usa los scripts que viven en `docs/initAmbiente/`:
@@ -109,6 +110,7 @@ make docker-release
 ```
 
 Este objetivo construye la imagen, la etiqueta como `${DOCKER_REGISTRY_USER}/ml-service:1.0.0`, la publica, la vuelve a descargar para validar, levanta un contenedor temporal y ejecuta los endpoints `/health` y `/predict` para confirmar que el modelo responde correctamente. `make pipeline-deploy` lo invoca automáticamente al final para que la entrega a producción siempre genere y verifique la imagen.
+
 
 Project Organization
 ------------
