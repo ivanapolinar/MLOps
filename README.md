@@ -18,6 +18,9 @@ Comandos Rápidos
     para `data/clean/steel_energy_clean.csv` y `models/final_model.joblib`.
   - Sube cambios a Git: `git add/commit/push` (usa `msg` si se indica,
     o un mensaje por defecto si no).
+  - Construye la imagen Docker con el modelo, la publica en Docker Hub
+    (requiere `docker login` y `DOCKER_REGISTRY_USER`) y ejecuta
+    smoke tests (`/health`, `/predict`) a partir de la imagen que vuelve a descargar.
 
 - `make prepare-update`
   - Prepara tu entorno local antes de trabajar: hace `git pull --ff-only`
@@ -31,6 +34,83 @@ Notas
   `MLFLOW_TRACKING_URI`, `MLFLOW_EXPERIMENT`, `MLFLOW_REGISTER_IN_REGISTRY=true`
   y `MLFLOW_REGISTERED_MODEL_NAME`.
 - Asegura credenciales AWS para `dvc push` si usas S3.
+
+
+## Inicializacion de ambientes
+
+Para reconstruir el entorno local (Python 3.11, virtualenv, dependencias base, DVC y MLflow) usa los scripts que viven en `docs/initAmbiente/`:
+
+- `init.bat` automatiza el flujo completo en Windows/PowerShell (incluye manejo de virtualenv, instalación por etapas y preparación de DVC/MLflow).
+- `init.sh` hace lo mismo en Linux o WSL.
+
+El detalle paso a paso, flags soportados y requisitos están documentados en `docs/initAmbiente/README.md`. Refiérete a ese archivo cada vez que necesites provisionar una nueva máquina o ajustar el comportamiento de los scripts.
+
+## Contenerización del servicio ML
+
+Se añadió un `Dockerfile` en la raíz que empaqueta la API de FastAPI (`src/api/main.py`), las dependencias del proyecto y el modelo serializado (`models/best_rf_model.joblib`). El contenedor expone el puerto `8000` y arranca Uvicorn con `src.api.main:app`.
+
+### Prueba local con Uvicorn
+
+```bash
+uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+Con el servidor arriba, valida `/predict` usando las categorías en mayúsculas esperadas por el modelo:
+
+```bash
+curl -X POST http://localhost:8000/predict \
+  -H "Content-Type: application/json" \
+  -d '{
+        "Usage_kWh": 1000,
+        "Lagging_Current_Reactive.Power_kVarh": 50,
+        "Leading_Current_Reactive_Power_kVarh": 20,
+        "CO2(tCO2)": 5,
+        "Lagging_Current_Power_Factor": 0.95,
+        "Leading_Current_Power_Factor": 0.9,
+        "NSM": 2000,
+        "mixed_type_col": 1,
+        "WeekStatus": "WEEKDAY",
+        "Day_of_week": "MONDAY"
+      }'
+```
+
+- Construir localmente:
+
+  ```bash
+  docker build -t ml-service:latest .
+  ```
+
+- Ejecutar la API (el puerto 8000 del host queda enlazado al contenedor):
+
+  ```bash
+  docker run --rm -p 8000:8000 ml-service:latest
+  ```
+
+  Opcionalmente puedes sobreescribir la ruta del modelo con `-e MLOPS_MODEL_PATH=/path/custom`.
+
+- Publicar en DockerHub usando tags versionadas (adapta `DOCKERHUB_USER` a tu cuenta):
+
+  ```bash
+  export DOCKERHUB_USER=<tu_usuario>
+  docker tag ml-service:latest ${DOCKERHUB_USER}/ml-service:1.0.0
+  docker push ${DOCKERHUB_USER}/ml-service:1.0.0
+  docker tag ml-service:latest ${DOCKERHUB_USER}/ml-service:latest
+  docker push ${DOCKERHUB_USER}/ml-service:latest
+  ```
+
+  Mantén el tag semántico (`1.0.0`) sincronizado con `MODEL_VERSION` en `src/api/main.py` y usa `latest` como alias para el último release estable.
+
+### Automatizar build/push/test con Make
+
+Define tu usuario de Docker Hub (y asegúrate de haber ejecutado `docker login`) antes de lanzar el flujo:
+
+```bash
+export DOCKER_REGISTRY_USER=ivan2909  # ajusta a tu usuario
+make docker-release
+```
+
+Este objetivo construye la imagen, la etiqueta como `${DOCKER_REGISTRY_USER}/ml-service:1.0.0`, la publica, la vuelve a descargar para validar, levanta un contenedor temporal y ejecuta los endpoints `/health` y `/predict` para confirmar que el modelo responde correctamente. `make pipeline-deploy` lo invoca automáticamente al final para que la entrega a producción siempre genere y verifique la imagen.
+
 
 Project Organization
 ------------
