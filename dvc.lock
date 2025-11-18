@@ -37,8 +37,8 @@ stages:
     outs:
     - path: models/best_rf_model.joblib
       hash: md5
-      md5: 82ce381f9704964d5c2d9a91f9540ab2
-      size: 28221508
+      md5: 2448be4c56ddc9bca9b4dabda8ed312f
+      size: 28221499
       isexec: true
     - path: reports/figures
       hash: md5
@@ -57,8 +57,8 @@ stages:
       isexec: true
     - path: models/best_rf_model.joblib
       hash: md5
-      md5: 82ce381f9704964d5c2d9a91f9540ab2
-      size: 28221508
+      md5: 2448be4c56ddc9bca9b4dabda8ed312f
+      size: 28221499
       isexec: true
     - path: src/models/predict_model.py
       hash: md5

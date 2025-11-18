@@ -266,10 +266,10 @@ Esta sección resume cómo crear/usar experimentos con MLflow, tanto en modo loc
 - Inicia el servidor (artefactos locales, con proxy de artefactos):
   - `make mlflow-server-local-modern`
 - Configura `.env` (o exporta en shell):
-  - `MLFLOW_TRACKING_URI=http://localhost:5000`
-  - `MLFLOW_EXPERIMENT=steel_energy`
-  - `MLFLOW_REGISTER_IN_REGISTRY=true`
-  - `MLFLOW_REGISTERED_MODEL_NAME=SteelEnergyRF`
+  - `export MLFLOW_TRACKING_URI=http://localhost:5000`
+  - `export MLFLOW_EXPERIMENT=steel_energy`
+  - `export MLFLOW_REGISTER_IN_REGISTRY=true`
+  - `export MLFLOW_REGISTERED_MODEL_NAME=SteelEnergyRF`
 - Crea el experimento (opcional, también se crea automáticamente desde el código):
   - Desde la UI: botón “Create” en la vista de Experimentos
   - O por CLI: `mlflow experiments create -n steel_energy`
